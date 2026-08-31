@@ -40,7 +40,9 @@ export const Leads = () => {
       <div className="panel-head" style={{ flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h3>Leads Pipeline</h3>
-          <div className="hint">18 active leads across 4 stages</div>
+          <div className="hint">
+            <b>{leads.length} active leads</b> across 4 stages
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

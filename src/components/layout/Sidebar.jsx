@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
 import { NAV_ITEMS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { orderService } from '../../services/orderService';
+import { leadService } from '../../services/leadService';
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -31,11 +32,39 @@ const ICON_MAP = {
 export const Sidebar = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [orderBadgeCount, setOrderBadgeCount] = useState(7);
+  const [orderBadgeCount, setOrderBadgeCount] = useState(0);
+  const [leadsBadgeCount, setLeadsBadgeCount] = useState(0);
+
+  const refreshCounts = useCallback(async () => {
+    try {
+      const [totalOrders, activeLeads] = await Promise.all([
+        orderService.getTotalCount(),
+        leadService.getActiveCount(),
+      ]);
+      setOrderBadgeCount(totalOrders);
+      setLeadsBadgeCount(activeLeads);
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
-    orderService.getPendingCount().then(count => setOrderBadgeCount(count));
-  }, []);
+    refreshCounts();
+
+    const handleUpdate = () => {
+      refreshCounts();
+    };
+
+    window.addEventListener('mittigold-order-created', handleUpdate);
+    window.addEventListener('mittigold-order-updated', handleUpdate);
+    window.addEventListener('mittigold-lead-updated', handleUpdate);
+    window.addEventListener('mittigold-lead-created', handleUpdate);
+
+    return () => {
+      window.removeEventListener('mittigold-order-created', handleUpdate);
+      window.removeEventListener('mittigold-order-updated', handleUpdate);
+      window.removeEventListener('mittigold-lead-updated', handleUpdate);
+      window.removeEventListener('mittigold-lead-created', handleUpdate);
+    };
+  }, [refreshCounts]);
 
   const handleUserClick = () => {
     if (onNavigate) onNavigate();
@@ -67,7 +96,14 @@ export const Sidebar = ({ onNavigate }) => {
             <div className="navgroup-label">{group.group}</div>
             {group.items.map((item) => {
               const IconComponent = ICON_MAP[item.icon];
-              const badgeValue = item.key === 'orders' ? orderBadgeCount : item.badge;
+              let badgeValue = null;
+              if (item.key === 'orders') {
+                badgeValue = orderBadgeCount > 0 ? orderBadgeCount : null;
+              } else if (item.key === 'leads') {
+                badgeValue = leadsBadgeCount > 0 ? leadsBadgeCount : null;
+              } else if (item.badge) {
+                badgeValue = item.badge;
+              }
 
               return (
                 <NavLink
@@ -80,7 +116,7 @@ export const Sidebar = ({ onNavigate }) => {
                 >
                   {IconComponent && <IconComponent className="ic" />}
                   <span>{item.label}</span>
-                  {badgeValue !== undefined && (
+                  {badgeValue !== null && (
                     <span className="badge">{badgeValue}</span>
                   )}
                 </NavLink>

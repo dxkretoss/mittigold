@@ -29,7 +29,7 @@ export const NAV_ITEMS = [
   {
     group: "Sales",
     items: [
-      { key: "leads", label: "Leads", path: "/leads", icon: "Users", badge: 18 },
+      { key: "leads", label: "Leads", path: "/leads", icon: "Users" },
       { key: "distributors", label: "Distributors", path: "/distributors", icon: "Building2" },
       { key: "brokers", label: "Brokers", path: "/brokers", icon: "UserCheck" },
     ]
@@ -37,7 +37,7 @@ export const NAV_ITEMS = [
   {
     group: "Operations",
     items: [
-      { key: "orders", label: "Orders", path: "/orders", icon: "Package", badge: 7 },
+      { key: "orders", label: "Orders", path: "/orders", icon: "Package" },
       { key: "invoices", label: "Invoices", path: "/invoices", icon: "FileText" },
       { key: "products", label: "Products", path: "/products", icon: "Layers" },
     ]

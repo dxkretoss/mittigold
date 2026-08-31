@@ -7,7 +7,7 @@ export const BestDistributorsTable = ({ distributors = [] }) => {
     <div className="panel">
       <div className="panel-head">
         <div>
-          <h3>Best 10 Distributors</h3>
+          <h3>Top Distributors</h3>
           <div className="hint">Ranked by month-to-date order value</div>
         </div>
         <Link to="/distributors" className="link-all">
@@ -26,24 +26,32 @@ export const BestDistributorsTable = ({ distributors = [] }) => {
               </tr>
             </thead>
             <tbody>
-              {distributors.map((d) => (
-                <tr key={d.id || d.name}>
-                  <td>
-                    <div className="avatarname">
-                      <div className="mini-av">{initials(d.name)}</div>
-                      <div>
-                        <div className="nm">{d.name}</div>
-                        <div className="sub">{d.city}</div>
+              {distributors.length > 0 ? (
+                distributors.map((d) => (
+                  <tr key={d.id || d.name}>
+                    <td>
+                      <div className="avatarname">
+                        <div className="mini-av">{initials(d.name)}</div>
+                        <div>
+                          <div className="nm">{d.name}</div>
+                          <div className="sub">{d.city}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="zoneword">{d.zone}</td>
-                  <td>{18 + Math.floor(d.target / 4)}</td>
-                  <td className="amt">
-                    ₹{(d.target * 612).toLocaleString('en-IN')}
+                    </td>
+                    <td className="zoneword">{d.zone}</td>
+                    <td>{d.calculatedOrders !== undefined ? d.calculatedOrders : Math.max(1, Math.floor((d.target || 80) / 4))}</td>
+                    <td className="amt">
+                      {d.formattedValue || `₹${((d.target || 80) * 612).toLocaleString('en-IN')}`}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink-soft)' }}>
+                    No distributors found in database
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

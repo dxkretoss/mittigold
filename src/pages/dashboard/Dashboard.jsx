@@ -21,8 +21,8 @@ export const Dashboard = () => {
   const loadData = async () => {
     const [kpiData, distroData, zoneData, leadData, orderData] = await Promise.all([
       dashboardService.getKpis(),
-      distributorService.getBest(5),
-      zoneService.getAll(),
+      dashboardService.getBestDistributors(5),
+      dashboardService.getZoneMetrics(),
       leadService.getRecent(4),
       orderService.getAwaitingDispatch(4),
     ]);
@@ -37,12 +37,20 @@ export const Dashboard = () => {
   useEffect(() => {
     loadData();
 
-    const handleOrderEvent = () => {
+    const handleUpdate = () => {
       loadData();
     };
-    window.addEventListener('mittigold-order-created', handleOrderEvent);
+
+    window.addEventListener('mittigold-order-created', handleUpdate);
+    window.addEventListener('mittigold-order-updated', handleUpdate);
+    window.addEventListener('mittigold-lead-updated', handleUpdate);
+    window.addEventListener('mittigold-lead-created', handleUpdate);
+
     return () => {
-      window.removeEventListener('mittigold-order-created', handleOrderEvent);
+      window.removeEventListener('mittigold-order-created', handleUpdate);
+      window.removeEventListener('mittigold-order-updated', handleUpdate);
+      window.removeEventListener('mittigold-lead-updated', handleUpdate);
+      window.removeEventListener('mittigold-lead-created', handleUpdate);
     };
   }, []);
 

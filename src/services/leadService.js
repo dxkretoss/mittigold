@@ -24,6 +24,9 @@ export const leadService = {
       const changed = lead.stage !== newStage;
       lead.stage = newStage;
       lead.last = 'Just now';
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mittigold-lead-updated'));
+      }
       return { lead, changed };
     }
     return { lead: null, changed: false };
@@ -37,6 +40,15 @@ export const leadService = {
       ...leadData
     };
     leadsStore.unshift(newLead);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-lead-created'));
+    }
     return newLead;
+  },
+
+  async getActiveCount() {
+    const leads = await this.getAll('all');
+    return leads.length;
   }
 };
+

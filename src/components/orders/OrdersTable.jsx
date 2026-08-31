@@ -1,10 +1,17 @@
 import React from 'react';
-import { Badge } from '../common/Badge';
+import { ChevronDown } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
 import { Pagination } from '../common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 
-export const OrdersTable = ({ orders = [] }) => {
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'dispatched', label: 'Dispatched' },
+  { value: 'delivered', label: 'Delivered' },
+];
+
+export const OrdersTable = ({ orders = [], onStatusChange }) => {
   const {
     currentPage,
     totalPages,
@@ -40,7 +47,47 @@ export const OrdersTable = ({ orders = [] }) => {
                   <td className="zoneword">{o.eta}</td>
                   <td className="zoneword">{o.transport}</td>
                   <td>
-                    <Badge type="order" variant={o.status} />
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                      <select
+                        value={o.status}
+                        onChange={(e) => onStatusChange && onStatusChange(o.id, e.target.value)}
+                        className={`chip ${o.status}`}
+                        style={{
+                          cursor: 'pointer',
+                          border: 'none',
+                          outline: 'none',
+                          appearance: 'none',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          paddingRight: '22px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          fontFamily: 'inherit',
+                          textTransform: 'capitalize',
+                        }}
+                        title="Click to change order status"
+                      >
+                        {STATUS_OPTIONS.map((opt) => (
+                          <option
+                            key={opt.value}
+                            value={opt.value}
+                            style={{ background: '#ffffff', color: '#1D2430' }}
+                          >
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        className="w-3 h-3 pointer-events-none"
+                        style={{
+                          position: 'absolute',
+                          right: '6px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          opacity: 0.65,
+                        }}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
@@ -63,3 +110,4 @@ export const OrdersTable = ({ orders = [] }) => {
     </div>
   );
 };
+

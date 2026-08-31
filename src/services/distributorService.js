@@ -77,6 +77,9 @@ export const distributorService = {
       if (!error && data?.[0]) {
         const local = getLocalDistributors();
         saveLocalDistributors([...local, data[0]]);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mittigold-distributor-created'));
+        }
         return data[0];
       }
     } catch (err) {
@@ -86,6 +89,9 @@ export const distributorService = {
     const local = getLocalDistributors();
     const updated = [...local, newDist];
     saveLocalDistributors(updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-created'));
+    }
     return newDist;
   },
 
@@ -117,6 +123,9 @@ export const distributorService = {
       if (!error && data?.[0]) {
         const local = getLocalDistributors();
         saveLocalDistributors(local.map((d) => (d.id === id ? data[0] : d)));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mittigold-distributor-updated'));
+        }
         return data[0];
       }
     } catch (err) {
@@ -126,6 +135,9 @@ export const distributorService = {
     const local = getLocalDistributors();
     const merged = local.map((d) => (d.id === id ? { ...d, ...payload } : d));
     saveLocalDistributors(merged);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-updated'));
+    }
     return merged.find((d) => d.id === id);
   },
 
@@ -160,6 +172,9 @@ export const distributorService = {
     const local = getLocalDistributors();
     const filtered = local.filter((d) => d.id !== id);
     saveLocalDistributors(filtered);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-deleted'));
+    }
     return true;
   }
 };

@@ -101,5 +101,79 @@ export const authService = {
   isAuthenticated() {
     const user = this.getCurrentUser();
     return !!user && user.role === 'admin';
+  },
+
+  /**
+   * Change password for current admin user
+   * Verifies current password and updates password in Supabase profiles table
+   */
+  async changePassword({ currentPassword, newPassword, userEmail, userId }) {
+    if (!currentPassword) {
+      throw new Error('Please enter your current password.');
+    }
+    if (!newPassword) {
+      throw new Error('Please enter a new password.');
+    }
+    if (newPassword.length < 8) {
+      throw new Error('New password must be at least 8 characters long.');
+    }
+    if (currentPassword === newPassword) {
+      throw new Error('New password cannot be the same as your current password.');
+    }
+
+    const currentUser = this.getCurrentUser();
+    const emailToMatch = (userEmail || currentUser?.email || '').trim().toLowerCase();
+    const idToMatch = userId || currentUser?.id;
+
+    if (!emailToMatch && !idToMatch) {
+      throw new Error('User session not found. Please log in again.');
+    }
+
+    // 1. Fetch profile to verify current password
+    let query = supabase
+      .from('profiles')
+      .select('id, email, password, is_active')
+      .limit(1);
+
+    if (idToMatch) {
+      query = query.eq('id', idToMatch);
+    } else {
+      query = query.ilike('email', emailToMatch);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error('Account not found in database.');
+    }
+
+    const profile = data[0];
+
+    if (profile.is_active === false) {
+      throw new Error('This account has been deactivated.');
+    }
+
+    if (profile.password !== currentPassword) {
+      throw new Error('Incorrect current password. Please try again.');
+    }
+
+    // 2. Update password in Supabase profiles table
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        password: newPassword,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', profile.id);
+
+    if (updateError) {
+      throw new Error(`Failed to update password: ${updateError.message}`);
+    }
+
+    return { success: true, message: 'Password updated successfully.' };
   }
 };

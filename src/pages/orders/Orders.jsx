@@ -3,11 +3,14 @@ import { Plus } from 'lucide-react';
 import { OrdersTable } from '../../components/orders/OrdersTable';
 import { NewOrderModal } from '../../components/orders/NewOrderModal';
 import { orderService } from '../../services/orderService';
+import { useToast } from '../../hooks/useToast';
+import { ORDER_STATUS_LABELS } from '../../utils/constants';
 
 export const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { showSuccess } = useToast();
 
   const loadOrders = async () => {
     const data = await orderService.getAll('all');
@@ -25,6 +28,18 @@ export const Orders = () => {
       window.removeEventListener('mittigold-order-created', handleOrderEvent);
     };
   }, []);
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await orderService.updateStatus(orderId, newStatus);
+      await loadOrders();
+      window.dispatchEvent(new CustomEvent('mittigold-order-created'));
+      const statusText = ORDER_STATUS_LABELS[newStatus] || newStatus;
+      showSuccess('Status Updated', `Order ${orderId} marked as ${statusText}.`);
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+    }
+  };
 
   const filteredOrders = orders.filter(
     (o) => filter === 'all' || o.status === filter
@@ -89,7 +104,7 @@ export const Orders = () => {
       </div>
 
       <div className="panel-body" style={{ paddingTop: '6px' }}>
-        <OrdersTable orders={filteredOrders} />
+        <OrdersTable orders={filteredOrders} onStatusChange={handleStatusChange} />
       </div>
 
       <NewOrderModal
@@ -103,3 +118,4 @@ export const Orders = () => {
     </div>
   );
 };
+

@@ -268,6 +268,86 @@ VALUES
     ('dist-6', 'Navsari Wholesale', 'South Gujarat', 'Navsari', 'Station Rd', 70, '₹19,100', 'unpaid', '24AAJPN3344H1Z6', 'Station Road, Near Railway Crossing, Navsari, Gujarat 396445')
 ON CONFLICT (id) DO NOTHING;
 
+-- ------------------------------------------------------------------------------
+-- 6. BROKERS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.brokers (
+    id TEXT PRIMARY KEY DEFAULT ('broker-' || gen_random_uuid()),
+    name TEXT NOT NULL,
+    phone TEXT,
+    rate NUMERIC DEFAULT 5,
+    orders INTEGER DEFAULT 0,
+    commission TEXT DEFAULT '₹0',
+    paid TEXT DEFAULT '₹0',
+    pending TEXT DEFAULT '₹0',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.brokers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read brokers" ON public.brokers;
+CREATE POLICY "Allow anon read brokers" ON public.brokers FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert brokers" ON public.brokers;
+CREATE POLICY "Allow anon insert brokers" ON public.brokers FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update brokers" ON public.brokers;
+CREATE POLICY "Allow anon update brokers" ON public.brokers FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete brokers" ON public.brokers;
+CREATE POLICY "Allow anon delete brokers" ON public.brokers FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Brokers
+INSERT INTO public.brokers (id, name, phone, rate, orders, commission, paid, pending)
+VALUES 
+    ('broker-1', 'J. Mehta Associates', '+91 98250 11002', 5, 142, '₹21,600', '₹18,400', '₹3,200'),
+    ('broker-2', 'Solanki Agency', '+91 98251 22003', 5, 98, '₹11,760', '₹11,760', '₹0'),
+    ('broker-3', 'Chirag Brokers', '+91 98252 33004', 5, 64, '₹8,050', '₹5,000', '₹3,050')
+ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 7. ZONES TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.zones (
+    id TEXT PRIMARY KEY,
+    zone_number INT NOT NULL,
+    name TEXT NOT NULL,
+    cities JSONB NOT NULL DEFAULT '[]'::jsonb,
+    pct NUMERIC DEFAULT 0,
+    sales TEXT DEFAULT '₹0',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read zones" ON public.zones;
+CREATE POLICY "Allow anon read zones" ON public.zones FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert zones" ON public.zones;
+CREATE POLICY "Allow anon insert zones" ON public.zones FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update zones" ON public.zones;
+CREATE POLICY "Allow anon update zones" ON public.zones FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete zones" ON public.zones;
+CREATE POLICY "Allow anon delete zones" ON public.zones FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial 4 Predefined Zones
+INSERT INTO public.zones (id, zone_number, name, cities, pct, sales) VALUES
+('zone-1', 1, 'South Gujarat', '[["Surat", 6], ["Navsari", 3], ["Valsad", 2]]'::jsonb, 34, '₹54,730'),
+('zone-2', 2, 'North Gujarat', '[["Mehsana", 4], ["Palanpur", 2], ["Patan", 2]]'::jsonb, 22, '₹35,410'),
+('zone-3', 3, 'Central Gujarat', '[["Ahmedabad", 8], ["Gandhinagar", 3], ["Anand", 2]]'::jsonb, 29, '₹46,680'),
+('zone-4', 4, 'Saurashtra', '[["Rajkot", 5], ["Jamnagar", 2], ["Bhavnagar", 2]]'::jsonb, 15, '₹24,160')
+ON CONFLICT (id) DO UPDATE SET
+    zone_number = EXCLUDED.zone_number,
+    name = EXCLUDED.name,
+    cities = EXCLUDED.cities,
+    pct = EXCLUDED.pct,
+    sales = EXCLUDED.sales;
+
 -- Verification
-SELECT * FROM public.distributors;
+SELECT * FROM public.zones ORDER BY zone_number;
+
 
