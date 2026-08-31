@@ -25,6 +25,7 @@ export const CreateInvoiceModal = ({
 
   const [dist, setDist] = useState('');
   const [gstRate, setGstRate] = useState(companySettings?.defaultGst ?? 5);
+  const [status, setStatus] = useState('pending');
   const [lines, setLines] = useState([{ productIndex: 0, qty: 10 }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,6 +38,7 @@ export const CreateInvoiceModal = ({
         if (invoice) {
           setDist(invoice.dist || '');
           setGstRate(invoice.gstRate !== undefined ? invoice.gstRate : 5);
+          setStatus(invoice.status || 'pending');
           if (invoice.items && invoice.items.length > 0 && prods && prods.length > 0) {
             const mapped = invoice.items.map((item) => {
               const pIdx = prods.findIndex(
@@ -55,6 +57,7 @@ export const CreateInvoiceModal = ({
         } else {
           setDist('');
           setGstRate(companySettings?.defaultGst ?? 5);
+          setStatus('pending');
           setLines([{ productIndex: 0, qty: 10 }]);
         }
       });
@@ -104,7 +107,7 @@ export const CreateInvoiceModal = ({
         const updated = await invoiceService.update(invoice.id, {
           dist,
           amt: fmtINR(total),
-          status: invoice.status || 'pending',
+          status: status || 'pending',
           date: invoice.date || todayDisplay(),
           items,
           gstRate: parseInt(gstRate),
@@ -116,7 +119,7 @@ export const CreateInvoiceModal = ({
         const newInvoice = await invoiceService.add({
           dist,
           amt: fmtINR(total),
-          status: 'pending',
+          status: status || 'pending',
           date: todayDisplay(),
           items,
           gstRate: parseInt(gstRate),
@@ -278,18 +281,31 @@ export const CreateInvoiceModal = ({
           </button>
         </div>
 
-        {/* GST Rate */}
-        <div className="f-group">
-          <label>GST Rate</label>
-          <select
-            value={gstRate}
-            onChange={(e) => setGstRate(parseInt(e.target.value))}
-          >
-            <option value="0">0% — Exempt</option>
-            <option value="5">5%</option>
-            <option value="12">12%</option>
-            <option value="18">18%</option>
-          </select>
+        {/* GST Rate & Payment Status in One Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+          <div className="f-group" style={{ marginBottom: 0 }}>
+            <label>GST Rate</label>
+            <select
+              value={gstRate}
+              onChange={(e) => setGstRate(parseInt(e.target.value))}
+            >
+              <option value="0">0% — Exempt</option>
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18">18%</option>
+            </select>
+          </div>
+
+          <div className="f-group" style={{ marginBottom: 0 }}>
+            <label>Payment Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--ink-faint)', margin: '4px 0 0' }}>

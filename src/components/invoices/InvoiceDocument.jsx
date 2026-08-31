@@ -110,16 +110,12 @@ export const InvoiceDocument = ({
           </div>
           <div style={{ textAlign: 'right' }}>
             <span>Payment</span>
-            <div
-              onClick={() => onToggleStatus && onToggleStatus(invoice.id, invoice.status)}
-              style={{ cursor: onToggleStatus ? 'pointer' : 'default', display: 'inline-block' }}
-              title={onToggleStatus ? `Click to mark as ${invoice.status === 'paid' ? 'Pending' : 'Paid'}` : ''}
-            >
+            <div>
               <Badge
                 variant={invoice.status}
                 className="mt-1"
               >
-                {invoice.status === 'paid' ? 'Paid ✓' : 'Pending (Click to Pay)'}
+                {invoice.status === 'paid' ? 'Paid ✓' : 'Pending'}
               </Badge>
             </div>
           </div>
