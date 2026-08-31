@@ -31,16 +31,22 @@ export const distributorService = {
         .order('created_at', { ascending: true });
 
       if (data && !error && data.length > 0) {
-        const merged = data.map((remote) => {
-          const matchedLocal = local.find((l) => l.id === remote.id);
-          return {
-            ...remote,
-            payment_proof: remote.payment_proof || matchedLocal?.payment_proof || null,
-            payment_date: remote.payment_date || matchedLocal?.payment_date || null,
-            payment_ref: remote.payment_ref || matchedLocal?.payment_ref || null,
-            payment_notes: remote.payment_notes || matchedLocal?.payment_notes || null,
-          };
-        });
+        const remoteIds = new Set(data.map(d => d.id));
+        const localOnly = local.filter(l => l.id && !remoteIds.has(l.id));
+        const merged = [
+          ...data.map((remote) => {
+            const matchedLocal = local.find((l) => l.id === remote.id);
+            return {
+              ...remote,
+              payment_proof: remote.payment_proof || matchedLocal?.payment_proof || null,
+              payment_date: remote.payment_date || matchedLocal?.payment_date || null,
+              payment_mode: remote.payment_mode || matchedLocal?.payment_mode || 'UPI / QR',
+              payment_ref: remote.payment_ref || matchedLocal?.payment_ref || null,
+              payment_notes: remote.payment_notes || matchedLocal?.payment_notes || null,
+            };
+          }),
+          ...localOnly
+        ];
         saveLocalDistributors(merged);
         return merged;
       }
