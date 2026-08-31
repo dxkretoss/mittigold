@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, RefreshCw, Loader2, Users } from 'lucide-react';
 import { DistributorsTable } from '../../components/distributors/DistributorsTable';
 import { AddDistributorModal } from '../../components/distributors/AddDistributorModal';
+import { PaymentProofModal } from '../../components/distributors/PaymentProofModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { Skeleton } from '../../components/common/Skeleton';
 import { distributorService } from '../../services/distributorService';
 import { zoneService } from '../../services/zoneService';
 import { useToast } from '../../hooks/useToast';
@@ -17,6 +19,11 @@ export const Distributors = () => {
   const [selectedPayment, setSelectedPayment] = useState('all');
 
   const [modalState, setModalState] = useState({
+    isOpen: false,
+    distributor: null,
+  });
+
+  const [paymentModalState, setPaymentModalState] = useState({
     isOpen: false,
     distributor: null,
   });
@@ -58,6 +65,10 @@ export const Distributors = () => {
     setDeleteDialog({ isOpen: true, distributor });
   };
 
+  const handleOpenPaymentProof = (distributor) => {
+    setPaymentModalState({ isOpen: true, distributor });
+  };
+
   const handleAddDistributor = async (newDistData) => {
     try {
       await distributorService.add(newDistData);
@@ -73,6 +84,19 @@ export const Distributors = () => {
       await loadData();
     } catch (err) {
       showError('Failed to update distributor', err.message);
+    }
+  };
+
+  const handleConfirmPaymentProof = async (distributorId, proofData) => {
+    try {
+      await distributorService.updatePayment(distributorId, 'paid', proofData);
+      showSuccess(
+        'Payment Recorded',
+        `Payment proof and record saved for ${paymentModalState.distributor?.name || 'distributor'}.`
+      );
+      await loadData();
+    } catch (err) {
+      showError('Failed to save payment proof', err.message);
     }
   };
 
@@ -92,6 +116,7 @@ export const Distributors = () => {
         newPay === 'paid' ? 'Payment Cleared' : 'Marked Unpaid',
         `Payment status updated to ${newPay.toUpperCase()}.`
       );
+      await loadData();
     } catch (err) {
       showError('Update Failed', err.message);
       loadData();
@@ -267,16 +292,14 @@ export const Distributors = () => {
       {/* Table Body */}
       <div className="panel-body" style={{ paddingTop: '6px' }}>
         {loading ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-wheat mb-2" />
-            <div style={{ fontSize: '13px' }}>Loading distributor directory...</div>
-          </div>
+          <Skeleton variant="table" rows={6} cols={6} />
         ) : (
           <DistributorsTable
             distributors={filteredDistributors}
             onEdit={handleOpenEdit}
             onDelete={handleOpenDelete}
             onTogglePayment={handleTogglePayment}
+            onOpenPaymentProof={handleOpenPaymentProof}
           />
         )}
       </div>
@@ -289,6 +312,14 @@ export const Distributors = () => {
         zones={zones}
         onAdd={handleAddDistributor}
         onUpdate={handleUpdateDistributor}
+      />
+
+      {/* Payment Proof Modal */}
+      <PaymentProofModal
+        isOpen={paymentModalState.isOpen}
+        distributor={paymentModalState.distributor}
+        onClose={() => setPaymentModalState({ isOpen: false, distributor: null })}
+        onConfirmPayment={handleConfirmPaymentProof}
       />
 
       {/* Delete Confirm Dialog */}

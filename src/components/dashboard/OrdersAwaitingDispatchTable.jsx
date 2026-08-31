@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../common/Badge';
+import { EmptyState } from '../common/EmptyState';
 
 export const OrdersAwaitingDispatchTable = ({ orders = [] }) => {
   return (
@@ -25,15 +26,22 @@ export const OrdersAwaitingDispatchTable = ({ orders = [] }) => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((o) => (
-                <tr key={o.id}>
-                  <td className="mono">{o.id}</td>
-                  <td className="zoneword">{o.dist}</td>
-                  <td>
-                    <Badge type="order" variant={o.status} />
-                  </td>
-                </tr>
-              ))}
+              {orders && orders.length > 0 ? (
+                orders.map((o) => (
+                  <tr key={o.id}>
+                    <td className="mono">{o.id}</td>
+                    <td className="zoneword">{o.dist}</td>
+                    <td>
+                      <Badge type="order" variant={o.status} />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <EmptyState
+                  message="All orders dispatched · No pending orders in queue"
+                  colSpan={3}
+                />
+              )}
             </tbody>
           </table>
         </div>

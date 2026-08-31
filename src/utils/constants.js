@@ -60,4 +60,5 @@ export const PAGE_TITLES = {
   "/invoices": { title: "Invoices", sub: "Create + download / share" },
   "/products": { title: "Products", sub: "9 SKUs across 5 product lines" },
   "/settings": { title: "Settings", sub: "Invoice details & account security" },
+  "/notifications": { title: "Notifications", sub: "Operational alerts, new orders & lead activities" },
 };

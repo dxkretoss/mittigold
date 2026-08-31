@@ -4,6 +4,7 @@ import { InvoiceList } from '../../components/invoices/InvoiceList';
 import { InvoiceDocument } from '../../components/invoices/InvoiceDocument';
 import { CreateInvoiceModal } from '../../components/invoices/CreateInvoiceModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { Skeleton } from '../../components/common/Skeleton';
 import { invoiceService } from '../../services/invoiceService';
 import { distributorService } from '../../services/distributorService';
 import { settingsService } from '../../services/settingsService';
@@ -217,9 +218,11 @@ export const Invoices = () => {
 
         <div className="panel-body" style={{ paddingTop: '4px', maxHeight: '560px', overflowY: 'auto' }}>
           {loading ? (
-            <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
-              <Loader2 className="w-5 h-5 animate-spin mx-auto text-wheat mb-2" />
-              <div style={{ fontSize: '12px' }}>Loading invoices...</div>
+            <div style={{ padding: '8px 4px' }}>
+              <Skeleton variant="rect" height="74px" style={{ marginBottom: '8px' }} />
+              <Skeleton variant="rect" height="74px" style={{ marginBottom: '8px' }} />
+              <Skeleton variant="rect" height="74px" style={{ marginBottom: '8px' }} />
+              <Skeleton variant="rect" height="74px" />
             </div>
           ) : (
             <InvoiceList

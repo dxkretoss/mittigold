@@ -1,5 +1,17 @@
 import React from 'react';
 import { Badge } from '../common/Badge';
+import { parseAmt, fmtINR } from '../../utils/formatCurrency';
+
+function getDisplayAmount(inv) {
+  if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+    const subtotal = inv.items.reduce((s, it) => s + parseAmt(it.amount), 0);
+    const gstRate = typeof inv.gstRate === 'number' ? inv.gstRate : 5;
+    const gst = Math.round((subtotal * gstRate) / 100);
+    const total = subtotal + gst;
+    return fmtINR(total);
+  }
+  return inv.amt || '₹0';
+}
 
 export const InvoiceList = ({ invoices = [], selectedId, onSelect }) => {
   if (invoices.length === 0) {
@@ -14,6 +26,8 @@ export const InvoiceList = ({ invoices = [], selectedId, onSelect }) => {
     <div className="space-y-1">
       {invoices.map((inv) => {
         const isSelected = selectedId === inv.id;
+        const displayAmount = getDisplayAmount(inv);
+
         return (
           <div
             key={inv.id}
@@ -34,7 +48,7 @@ export const InvoiceList = ({ invoices = [], selectedId, onSelect }) => {
             </div>
             <div className="text-right">
               <div className="amt font-semibold text-ink">
-                {inv.amt}
+                {displayAmount}
               </div>
               <Badge
                 variant={inv.status}

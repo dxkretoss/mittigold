@@ -4,6 +4,7 @@ import { BestDistributorsTable } from '../../components/dashboard/BestDistributo
 import { ZonePerformanceCard } from '../../components/dashboard/ZonePerformanceCard';
 import { RecentLeadsTable } from '../../components/dashboard/RecentLeadsTable';
 import { OrdersAwaitingDispatchTable } from '../../components/dashboard/OrdersAwaitingDispatchTable';
+import { Skeleton } from '../../components/common/Skeleton';
 
 import { dashboardService } from '../../services/dashboardService';
 import { distributorService } from '../../services/distributorService';
@@ -17,21 +18,26 @@ export const Dashboard = () => {
   const [zones, setZones] = useState([]);
   const [recentLeads, setRecentLeads] = useState([]);
   const [awaitingOrders, setAwaitingOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
-    const [kpiData, distroData, zoneData, leadData, orderData] = await Promise.all([
-      dashboardService.getKpis(),
-      dashboardService.getBestDistributors(5),
-      dashboardService.getZoneMetrics(),
-      leadService.getRecent(4),
-      orderService.getAwaitingDispatch(4),
-    ]);
+    try {
+      const [kpiData, distroData, zoneData, leadData, orderData] = await Promise.all([
+        dashboardService.getKpis(),
+        dashboardService.getBestDistributors(5),
+        dashboardService.getZoneMetrics(),
+        leadService.getRecent(4),
+        orderService.getAwaitingDispatch(4),
+      ]);
 
-    setKpis(kpiData);
-    setBestDistributors(distroData);
-    setZones(zoneData);
-    setRecentLeads(leadData);
-    setAwaitingOrders(orderData);
+      setKpis(kpiData || []);
+      setBestDistributors(distroData || []);
+      setZones(zoneData || []);
+      setRecentLeads(leadData || []);
+      setAwaitingOrders(orderData || []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -53,6 +59,34 @@ export const Dashboard = () => {
       window.removeEventListener('mittigold-lead-created', handleUpdate);
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton variant="kpi" count={4} />
+        <div className="grid2">
+          <div className="panel" style={{ padding: '16px' }}>
+            <Skeleton variant="text" width="40%" height="20px" style={{ marginBottom: '16px' }} />
+            <Skeleton variant="table" rows={4} cols={4} />
+          </div>
+          <div className="panel" style={{ padding: '16px' }}>
+            <Skeleton variant="text" width="40%" height="20px" style={{ marginBottom: '16px' }} />
+            <Skeleton variant="rect" width="100%" height="160px" />
+          </div>
+        </div>
+        <div className="grid2" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <div className="panel" style={{ padding: '16px' }}>
+            <Skeleton variant="text" width="40%" height="20px" style={{ marginBottom: '16px' }} />
+            <Skeleton variant="table" rows={3} cols={3} />
+          </div>
+          <div className="panel" style={{ padding: '16px' }}>
+            <Skeleton variant="text" width="40%" height="20px" style={{ marginBottom: '16px' }} />
+            <Skeleton variant="table" rows={3} cols={3} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -12,7 +12,38 @@ export const initialInvoices = [
       { name: "Sooji", pack: "30 kg", qty: "10 bags", amount: 9200 },
     ]
   },
-  { id: "MG-INV-00230", dist: "Shree Umiya Traders", amt: "₹34,900", status: "paid", date: "29 Jul 2026" },
-  { id: "MG-INV-00229", dist: "Patel Distributors", amt: "₹22,150", status: "paid", date: "27 Jul 2026" },
-  { id: "MG-INV-00228", dist: "Anand Agro Supplies", amt: "₹58,300", status: "pending", date: "24 Jul 2026" },
+  {
+    id: "MG-INV-00230",
+    dist: "Shree Umiya Traders",
+    amt: "₹32,802",
+    status: "paid",
+    date: "29 Jul 2026",
+    gstRate: 5,
+    items: [
+      { name: "Bhakhri Atta", pack: "30 kg", qty: "22 bags", amount: 31240 }
+    ]
+  },
+  {
+    id: "MG-INV-00229",
+    dist: "Patel Distributors",
+    amt: "₹22,150",
+    status: "paid",
+    date: "27 Jul 2026",
+    gstRate: 5,
+    items: [
+      { name: "Chakki Fresh Atta", pack: "10 kg", qty: "50 bags", amount: 21095 }
+    ]
+  },
+  {
+    id: "MG-INV-00228",
+    dist: "Anand Agro Supplies",
+    amt: "₹58,300",
+    status: "pending",
+    date: "24 Jul 2026",
+    gstRate: 5,
+    items: [
+      { name: "Chakki Fresh Atta", pack: "30 kg", qty: "40 bags", amount: 52000 },
+      { name: "Rava", pack: "30 kg", qty: "3 bags", amount: 3524 }
+    ]
+  },
 ];

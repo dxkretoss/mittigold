@@ -239,9 +239,21 @@ CREATE TABLE IF NOT EXISTS public.distributors (
     phone TEXT,
     gstin TEXT,
     billing TEXT,
+    payment_proof TEXT,
+    payment_date TEXT,
+    payment_mode TEXT DEFAULT 'UPI / QR',
+    payment_ref TEXT,
+    payment_notes TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Migration for existing installations:
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_proof TEXT;
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_date TEXT;
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT 'UPI / QR';
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_ref TEXT;
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_notes TEXT;
 
 ALTER TABLE public.distributors ENABLE ROW LEVEL SECURITY;
 
@@ -347,7 +359,83 @@ ON CONFLICT (id) DO UPDATE SET
     pct = EXCLUDED.pct,
     sales = EXCLUDED.sales;
 
+-- ------------------------------------------------------------------------------
+-- 8. LEADS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.leads (
+    id TEXT PRIMARY KEY DEFAULT ('lead-' || gen_random_uuid()),
+    name TEXT NOT NULL,
+    zone TEXT NOT NULL,
+    stage TEXT NOT NULL DEFAULT 'new' CHECK (stage IN ('new', 'followup', 'convert', 'close')),
+    owner TEXT NOT NULL,
+    phone TEXT,
+    notes TEXT,
+    last TEXT DEFAULT 'Today',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read leads" ON public.leads;
+CREATE POLICY "Allow anon read leads" ON public.leads FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert leads" ON public.leads;
+CREATE POLICY "Allow anon insert leads" ON public.leads FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update leads" ON public.leads;
+CREATE POLICY "Allow anon update leads" ON public.leads FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete leads" ON public.leads;
+CREATE POLICY "Allow anon delete leads" ON public.leads FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Leads
+INSERT INTO public.leads (id, name, zone, stage, owner, phone, last) VALUES
+('lead-1', 'Vraj Kirana Store', 'South Gujarat', 'new', 'R. Joshi', '+91 98250 44101', 'Today'),
+('lead-2', 'Om Sai Traders', 'Central Gujarat', 'followup', 'K. Patel', '+91 98251 55202', '1 day ago'),
+('lead-3', 'Ganesh Provision', 'North Gujarat', 'convert', 'R. Joshi', '+91 98252 66303', '3 days ago'),
+('lead-4', 'Siddhi General Store', 'Saurashtra', 'new', 'M. Shah', '+91 98253 77404', 'Today'),
+('lead-5', 'Krishna Wholesale', 'Central Gujarat', 'close', 'K. Patel', '+91 98254 88505', '1 week ago'),
+('lead-6', 'Radhe Kirana', 'South Gujarat', 'followup', 'M. Shah', '+91 98255 99606', '2 days ago')
+ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 9. NOTIFICATIONS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id TEXT PRIMARY KEY DEFAULT ('notif-' || gen_random_uuid()),
+    type TEXT NOT NULL DEFAULT 'order' CHECK (type IN ('order', 'lead', 'payment', 'system')),
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    link TEXT DEFAULT '/orders',
+    read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read notifications" ON public.notifications;
+CREATE POLICY "Allow anon read notifications" ON public.notifications FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert notifications" ON public.notifications;
+CREATE POLICY "Allow anon insert notifications" ON public.notifications FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update notifications" ON public.notifications;
+CREATE POLICY "Allow anon update notifications" ON public.notifications FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete notifications" ON public.notifications;
+CREATE POLICY "Allow anon delete notifications" ON public.notifications FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Notifications
+INSERT INTO public.notifications (id, type, title, message, link, read, created_at) VALUES
+('notif-1', 'order', 'New Order Received', 'Navsari Wholesale placed order MG-2026-0232 for 980 bags.', '/orders', false, now() - INTERVAL '15 minutes'),
+('notif-2', 'lead', 'New Lead Added', 'Vraj Kirana Store from South Gujarat was added by R. Joshi.', '/leads', false, now() - INTERVAL '2 hours'),
+('notif-3', 'payment', 'Payment Cleared', 'Shree Umiya Traders payment proof verified and marked as Paid.', '/distributors', false, now() - INTERVAL '4 hours'),
+('notif-4', 'order', 'Order Dispatched', 'Order MG-2026-0230 is out for delivery via Tata Ace.', '/orders', true, now() - INTERVAL '1 day'),
+('notif-5', 'lead', 'Lead Converted', 'Ganesh Provision moved to Convert stage.', '/leads', true, now() - INTERVAL '2 days')
+ON CONFLICT (id) DO NOTHING;
+
 -- Verification
-SELECT * FROM public.zones ORDER BY zone_number;
+SELECT * FROM public.notifications ORDER BY created_at DESC;
 
 

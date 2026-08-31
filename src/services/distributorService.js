@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { initialDistributors } from '../data/distributorsData';
+import { notificationService } from './notificationService';
 
 const DISTRIBUTORS_STORAGE_KEY = 'mittigold_distributors_data';
 
@@ -22,6 +23,7 @@ export const distributorService = {
    * Fetch all distributors from Supabase (with localStorage fallback)
    */
   async getAll() {
+    const local = getLocalDistributors();
     try {
       const { data, error } = await supabase
         .from('distributors')
@@ -29,13 +31,23 @@ export const distributorService = {
         .order('created_at', { ascending: true });
 
       if (data && !error && data.length > 0) {
-        saveLocalDistributors(data);
-        return data;
+        const merged = data.map((remote) => {
+          const matchedLocal = local.find((l) => l.id === remote.id);
+          return {
+            ...remote,
+            payment_proof: remote.payment_proof || matchedLocal?.payment_proof || null,
+            payment_date: remote.payment_date || matchedLocal?.payment_date || null,
+            payment_ref: remote.payment_ref || matchedLocal?.payment_ref || null,
+            payment_notes: remote.payment_notes || matchedLocal?.payment_notes || null,
+          };
+        });
+        saveLocalDistributors(merged);
+        return merged;
       }
     } catch (err) {
       console.warn('Supabase distributors query error, falling back to local:', err);
     }
-    return getLocalDistributors();
+    return local;
   },
 
   /**
@@ -104,29 +116,66 @@ export const distributorService = {
       zone: distributorData.zone,
       city: distributorData.city,
       area: distributorData.area,
-      target: parseInt(distributorData.target) || 0,
-      outstanding: distributorData.outstanding || '₹0',
-      pay: distributorData.pay || 'paid',
-      phone: distributorData.phone || '',
-      gstin: distributorData.gstin || '',
-      billing: distributorData.billing || '',
+      target: distributorData.target !== undefined ? (parseInt(distributorData.target) || 0) : undefined,
+      outstanding: distributorData.outstanding !== undefined ? distributorData.outstanding : undefined,
+      pay: distributorData.pay !== undefined ? distributorData.pay : undefined,
+      phone: distributorData.phone !== undefined ? distributorData.phone : undefined,
+      gstin: distributorData.gstin !== undefined ? distributorData.gstin : undefined,
+      billing: distributorData.billing !== undefined ? distributorData.billing : undefined,
+      payment_proof: distributorData.payment_proof !== undefined ? distributorData.payment_proof : undefined,
+      payment_date: distributorData.payment_date !== undefined ? distributorData.payment_date : undefined,
+      payment_mode: distributorData.payment_mode !== undefined ? distributorData.payment_mode : undefined,
+      payment_ref: distributorData.payment_ref !== undefined ? distributorData.payment_ref : undefined,
+      payment_notes: distributorData.payment_notes !== undefined ? distributorData.payment_notes : undefined,
       updated_at: new Date().toISOString()
     };
 
+    // Clean undefined keys
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('distributors')
         .update(payload)
         .eq('id', id)
         .select();
 
-      if (!error && data?.[0]) {
+      // Graceful fallback if payment_proof/payment_date/payment_ref/payment_notes/payment_mode columns not in Supabase schema cache
+      if (
+        error &&
+        (error.code === 'PGRST204' ||
+          error.code === '42703' ||
+          error.message?.toLowerCase().includes('column') ||
+          error.message?.toLowerCase().includes('schema cache'))
+      ) {
+        console.warn('Payment proof columns not in remote Supabase table schema cache. Saving proof locally and updating basic fields in Supabase:', error.message);
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.payment_proof;
+        delete fallbackPayload.payment_date;
+        delete fallbackPayload.payment_mode;
+        delete fallbackPayload.payment_ref;
+        delete fallbackPayload.payment_notes;
+
+        try {
+          const retry = await supabase
+            .from('distributors')
+            .update(fallbackPayload)
+            .eq('id', id)
+            .select();
+
+          data = retry.data;
+          error = retry.error;
+        } catch (_) {}
+      }
+
+      if (data?.[0]) {
+        const fullSaved = { ...data[0], ...payload };
         const local = getLocalDistributors();
-        saveLocalDistributors(local.map((d) => (d.id === id ? data[0] : d)));
+        saveLocalDistributors(local.map((d) => (d.id === id ? fullSaved : d)));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('mittigold-distributor-updated'));
         }
-        return data[0];
+        return fullSaved;
       }
     } catch (err) {
       console.warn('Supabase distributor update failed, saving locally:', err);
@@ -142,10 +191,33 @@ export const distributorService = {
   },
 
   /**
-   * Update distributor payment status (paid or unpaid)
+   * Update distributor payment status and proof
    */
-  async updatePayment(id, newPay) {
-    return this.update(id, { pay: newPay });
+  async updatePayment(id, newPay, proofData = {}) {
+    const payload = {
+      pay: newPay,
+    };
+    if (newPay === 'paid') {
+      if (proofData.payment_proof !== undefined) payload.payment_proof = proofData.payment_proof;
+      if (proofData.payment_date !== undefined) payload.payment_date = proofData.payment_date;
+      if (proofData.payment_mode !== undefined) payload.payment_mode = proofData.payment_mode;
+      if (proofData.payment_ref !== undefined) payload.payment_ref = proofData.payment_ref;
+      if (proofData.payment_notes !== undefined) payload.payment_notes = proofData.payment_notes;
+
+      try {
+        const local = getLocalDistributors();
+        const distName = local.find(d => d.id === id)?.name || 'Distributor';
+        notificationService.add({
+          type: 'payment',
+          title: 'Payment Cleared',
+          message: `${distName} payment record and proof verified as Paid.`,
+          link: '/distributors',
+        }).catch(() => {});
+      } catch (_) {}
+    } else {
+      payload.payment_proof = null;
+    }
+    return this.update(id, payload);
   },
 
   /**
@@ -153,7 +225,7 @@ export const distributorService = {
    */
   async togglePayment(id, currentPay) {
     const newPay = currentPay === 'paid' ? 'unpaid' : 'paid';
-    return this.update(id, { pay: newPay });
+    return this.updatePayment(id, newPay);
   },
 
   /**

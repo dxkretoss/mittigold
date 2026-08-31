@@ -131,6 +131,7 @@ export const ProductModal = ({
           </div>
         </div>
 
+        {/* Stock Qty & Level fields commented out for future phase
         <div className="f-group">
           <label>Stock Qty (Bags / Units)</label>
           <input
@@ -165,6 +166,7 @@ export const ProductModal = ({
             }}
           />
         </div>
+        */}
 
         <div className="f-group f-check" style={{ marginTop: '6px' }}>
           <input

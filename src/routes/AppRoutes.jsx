@@ -14,6 +14,7 @@ import { Orders } from '../pages/orders/Orders';
 import { Invoices } from '../pages/invoices/Invoices';
 import { Products } from '../pages/products/Products';
 import { Settings } from '../pages/settings/Settings';
+import { Notifications } from '../pages/notifications/Notifications';
 
 export const AppRoutes = () => {
   return (
@@ -41,6 +42,7 @@ export const AppRoutes = () => {
         <Route path="invoices" element={<Invoices />} />
         <Route path="products" element={<Products />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="notifications" element={<Notifications />} />
       </Route>
 
       {/* Catch-all redirect */}

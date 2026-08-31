@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { PhoneInput } from '../common/PhoneInput';
 import { useToast } from '../../hooks/useToast';
 
 export const AddDistributorModal = ({
@@ -20,8 +21,6 @@ export const AddDistributorModal = ({
     city: '',
     area: '',
     target: 80,
-    outstanding: '₹0',
-    pay: 'paid',
     phone: '',
     gstin: '',
     sameBilling: true,
@@ -36,8 +35,6 @@ export const AddDistributorModal = ({
         city: distributor.city || '',
         area: distributor.area || '',
         target: distributor.target !== undefined ? distributor.target : 80,
-        outstanding: distributor.outstanding || '₹0',
-        pay: distributor.pay || 'paid',
         phone: distributor.phone || '',
         gstin: distributor.gstin || '',
         sameBilling: !distributor.billing || distributor.billing === `${distributor.area}, ${distributor.city}`,
@@ -50,8 +47,6 @@ export const AddDistributorModal = ({
         city: '',
         area: '',
         target: 80,
-        outstanding: '₹0',
-        pay: 'paid',
         phone: '',
         gstin: '',
         sameBilling: true,
@@ -75,8 +70,8 @@ export const AddDistributorModal = ({
       city: formData.city.trim(),
       area: formData.area.trim(),
       target: parseInt(formData.target) || 0,
-      outstanding: formData.outstanding?.trim() || '₹0',
-      pay: formData.pay || 'paid',
+      outstanding: isEditing && distributor?.outstanding ? distributor.outstanding : '₹0',
+      pay: isEditing && distributor?.pay ? distributor.pay : 'paid',
       phone: formData.phone.trim(),
       gstin: formData.gstin.trim(),
       billing: billingText,
@@ -190,34 +185,11 @@ export const AddDistributorModal = ({
 
         <div className="f-row">
           <div className="f-group">
-            <label>Outstanding Amount (₹)</label>
-            <input
-              type="text"
-              placeholder="e.g. ₹45,200"
-              value={formData.outstanding}
-              onChange={(e) => setFormData({ ...formData, outstanding: e.target.value })}
-            />
-          </div>
-          <div className="f-group">
-            <label>Payment Status</label>
-            <select
-              value={formData.pay}
-              onChange={(e) => setFormData({ ...formData, pay: e.target.value })}
-            >
-              <option value="paid">Paid</option>
-              <option value="unpaid">Unpaid</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="f-row">
-          <div className="f-group">
             <label>Contact Number</label>
-            <input
-              type="tel"
-              placeholder="+91 90000 00000"
+            <PhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(val) => setFormData({ ...formData, phone: val })}
+              disabled={loading}
             />
           </div>
           <div className="f-group">
@@ -227,6 +199,7 @@ export const AddDistributorModal = ({
               placeholder="e.g. 24ABCPT4567F1Z2"
               value={formData.gstin}
               onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+              disabled={loading}
             />
           </div>
         </div>

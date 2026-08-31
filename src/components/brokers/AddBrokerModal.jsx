@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { PhoneInput } from '../common/PhoneInput';
 import { useToast } from '../../hooks/useToast';
 
 export const AddBrokerModal = ({
@@ -18,31 +19,20 @@ export const AddBrokerModal = ({
     name: '',
     phone: '',
     rate: 5,
-    orders: 0,
-    paid: '',
-    pending: '',
   });
 
   useEffect(() => {
     if (broker) {
-      const cleanPaid = (broker.paid || '').replace(/[^0-9.]/g, '');
-      const cleanPending = (broker.pending || '').replace(/[^0-9.]/g, '');
       setFormData({
         name: broker.name || '',
         phone: broker.phone || '',
         rate: broker.rate !== undefined ? broker.rate : 5,
-        orders: broker.orders !== undefined ? broker.orders : 0,
-        paid: cleanPaid !== '0' ? cleanPaid : '',
-        pending: cleanPending !== '0' ? cleanPending : '',
       });
     } else {
       setFormData({
         name: '',
         phone: '',
         rate: 5,
-        orders: 0,
-        paid: '',
-        pending: '',
       });
     }
     setError('');
@@ -59,19 +49,14 @@ export const AddBrokerModal = ({
     setIsSubmitting(true);
 
     try {
-      const ordersCount = parseInt(formData.orders, 10) || 0;
-      const paidVal = parseFloat((formData.paid || '0').replace(/[^0-9.]/g, '')) || 0;
-      const pendingVal = parseFloat((formData.pending || '0').replace(/[^0-9.]/g, '')) || 0;
-      const totalCommission = paidVal + pendingVal;
-
       const brokerPayload = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         rate: parseFloat(formData.rate) || 5,
-        orders: ordersCount,
-        commission: totalCommission > 0 ? `₹${totalCommission.toLocaleString('en-IN')}` : '₹0',
-        paid: paidVal > 0 ? `₹${paidVal.toLocaleString('en-IN')}` : '₹0',
-        pending: pendingVal > 0 ? `₹${pendingVal.toLocaleString('en-IN')}` : '₹0',
+        orders: isEditing && broker.orders !== undefined ? broker.orders : 0,
+        commission: isEditing && broker.commission ? broker.commission : '₹0',
+        paid: isEditing && broker.paid ? broker.paid : '₹0',
+        pending: isEditing && broker.pending ? broker.pending : '₹0',
       };
 
       if (isEditing && onUpdate) {
@@ -82,7 +67,7 @@ export const AddBrokerModal = ({
         showSuccess('Broker Added', `${brokerPayload.name} has been added to the broker network.`);
       }
 
-      setFormData({ name: '', phone: '', rate: 5, orders: 0, paid: '', pending: '' });
+      setFormData({ name: '', phone: '', rate: 5 });
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to save broker. Please try again.');
@@ -94,7 +79,7 @@ export const AddBrokerModal = ({
   const handleModalClose = () => {
     if (!isSubmitting) {
       setError('');
-      setFormData({ name: '', phone: '', rate: 5, orders: 0, paid: '', pending: '' });
+      setFormData({ name: '', phone: '', rate: 5 });
       onClose();
     }
   };
@@ -147,11 +132,9 @@ export const AddBrokerModal = ({
         <div className="f-row">
           <div className="f-group">
             <label>Contact Phone</label>
-            <input
-              type="tel"
-              placeholder="+91 98250 12345"
+            <PhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(val) => setFormData({ ...formData, phone: val })}
               disabled={isSubmitting}
             />
           </div>
@@ -167,43 +150,6 @@ export const AddBrokerModal = ({
               disabled={isSubmitting}
             />
           </div>
-        </div>
-
-        <div className="f-row">
-          <div className="f-group">
-            <label>Total Completed Orders</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="0"
-              value={formData.orders}
-              onChange={(e) => setFormData({ ...formData, orders: e.target.value })}
-              disabled={isSubmitting}
-            />
-          </div>
-          <div className="f-group">
-            <label>Commission Paid (₹)</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="0"
-              value={formData.paid}
-              onChange={(e) => setFormData({ ...formData, paid: e.target.value })}
-              disabled={isSubmitting}
-            />
-          </div>
-        </div>
-
-        <div className="f-group">
-          <label>Commission Pending (₹)</label>
-          <input
-            type="number"
-            min="0"
-            placeholder="0"
-            value={formData.pending}
-            onChange={(e) => setFormData({ ...formData, pending: e.target.value })}
-            disabled={isSubmitting}
-          />
         </div>
 
         {error && (
@@ -225,4 +171,3 @@ export const AddBrokerModal = ({
     </Modal>
   );
 };
-

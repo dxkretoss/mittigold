@@ -11,7 +11,7 @@ export const ZonePerformanceCard = ({ zones = [] }) => {
         </div>
       </div>
       <div className="panel-body">
-        {zones.map((z, idx) => (
+        {zones.map((z) => (
           <div
             key={z.id || z.name}
             className="flex items-center gap-3.5 py-3.5 border-b border-dashed border-line last:border-b-0"
@@ -22,8 +22,10 @@ export const ZonePerformanceCard = ({ zones = [] }) => {
             <div className="flex-1">
               <GrainGauge percent={z.pct} />
             </div>
-            <div className="w-[70px] text-right font-mono text-xs text-ink-soft flex-shrink-0">
-              {z.sales}
+            <div className="text-right font-mono text-xs text-ink-soft flex-shrink-0 flex items-center justify-end gap-1.5 min-w-[95px]">
+              <span className="font-semibold text-ink">{z.pct || 0}%</span>
+              <span className="text-ink-faint">·</span>
+              <span>{z.sales}</span>
             </div>
           </div>
         ))}

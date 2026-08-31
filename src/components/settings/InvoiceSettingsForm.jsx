@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Edit2 } from 'lucide-react';
+import { PhoneInput } from '../common/PhoneInput';
 import { useToast } from '../../hooks/useToast';
 
 export const InvoiceSettingsForm = ({ initialSettings, onSave }) => {
@@ -85,44 +86,52 @@ export const InvoiceSettingsForm = ({ initialSettings, onSave }) => {
       </div>
       <div className="panel-body">
         <form onSubmit={handleSubmit} id="settingsForm">
-          <div className="f-group">
-            <label>Company Display Name</label>
-            <input
-              type="text"
-              disabled={!isEditing}
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
+          {/* Row 1: Company Display Name & Legal Entity Name */}
+          <div className="f-row">
+            <div className="f-group">
+              <label>Company Display Name</label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div className="f-group">
+              <label>Legal Entity Name</label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                value={formData.legal}
+                onChange={(e) => setFormData({ ...formData, legal: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="f-group">
-            <label>Legal Entity Name</label>
-            <input
-              type="text"
-              disabled={!isEditing}
-              value={formData.legal}
-              onChange={(e) => setFormData({ ...formData, legal: e.target.value })}
-            />
-          </div>
-          <div className="f-group">
-            <label>GSTIN</label>
-            <input
-              type="text"
-              disabled={!isEditing}
-              placeholder="e.g. 24AAAFF1234A1Z5"
-              value={formData.gstin}
-              onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-            />
-          </div>
-          <div className="f-group">
-            <label>Registered Address</label>
-            <textarea
-              rows="2"
-              disabled={!isEditing}
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-            />
+
+          {/* Row 2: GSTIN & Registered Address */}
+          <div className="f-row">
+            <div className="f-group">
+              <label>GSTIN</label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                placeholder="e.g. 24AAAFF1234A1Z5"
+                value={formData.gstin}
+                onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+              />
+            </div>
+            <div className="f-group">
+              <label>Registered Address</label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                placeholder="e.g. Survey No. 142, GIDC Estate, Ahmedabad"
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+              />
+            </div>
           </div>
           <div className="f-row">
             <div className="f-group">
@@ -138,12 +147,11 @@ export const InvoiceSettingsForm = ({ initialSettings, onSave }) => {
             </div>
             <div className="f-group">
               <label>Support Phone</label>
-              <input
-                type="tel"
+              <PhoneInput
                 disabled={!isEditing}
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
+                onChange={(val) =>
+                  setFormData({ ...formData, phone: val })
                 }
               />
             </div>

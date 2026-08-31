@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 import { zoneService } from '../../services/zoneService';
 import { GrainGauge } from '../../components/common/GrainGauge';
+import { Skeleton } from '../../components/common/Skeleton';
 
 export const Zones = () => {
   const [zones, setZones] = useState([]);
@@ -52,9 +52,20 @@ export const Zones = () => {
       </p>
 
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
-          <Loader2 className="w-7 h-7 animate-spin mx-auto text-wheat mb-2" />
-          <div style={{ fontSize: '13px' }}>Calculating zone metrics from database...</div>
+        <div className="zonegrid">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="zonebig" style={{ padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <Skeleton variant="text" width="50%" height="18px" />
+                <Skeleton variant="rect" width="60px" height="20px" />
+              </div>
+              <Skeleton variant="rect" width="100%" height="50px" style={{ marginBottom: '16px' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Skeleton variant="text" width="30%" height="14px" />
+                <Skeleton variant="text" width="20%" height="14px" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="zonegrid">
@@ -72,23 +83,27 @@ export const Zones = () => {
                 </span>
               </div>
 
-              <div className="breadcrumb-zone" style={{ marginTop: '8px' }}>
+              <div className="breadcrumb-zone" style={{ marginTop: '8px', marginBottom: '12px' }}>
                 Zone → <b>City</b> → Area
               </div>
 
-              <GrainGauge percent={z.pct || 0} className="mt-3.5" />
+              <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <GrainGauge percent={z.pct || 0} />
+              </div>
 
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginTop: '6px',
+                  marginBottom: '14px',
                   fontSize: '11.5px',
                   color: 'var(--ink-soft)',
                 }}
               >
                 <span>Share of total sales</span>
-                <span className="mono">{z.pct || 0}%</span>
+                <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                  <span className="mono">{z.pct || 0}%</span> {z.sales && z.sales !== '₹0' ? `(${z.sales})` : ''}
+                </span>
               </div>
 
               <div className="citylist">

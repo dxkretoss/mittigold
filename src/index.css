@@ -43,7 +43,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: 'Sora', sans-serif;
   color: var(--navy);
   margin: 0;
@@ -532,13 +535,11 @@ nav.navlist::-webkit-scrollbar-thumb:hover {
   right: 0;
   bottom: 0;
   left: 0;
-  background-image: repeating-linear-gradient(
-    -40deg,
-    rgba(255, 255, 255, 0.4) 0px,
-    rgba(255, 255, 255, 0.4) 3px,
-    transparent 3px,
-    transparent 7px
-  );
+  background-image: repeating-linear-gradient(-40deg,
+      rgba(255, 255, 255, 0.4) 0px,
+      rgba(255, 255, 255, 0.4) 3px,
+      transparent 3px,
+      transparent 7px);
 }
 
 .gfill.blue {
@@ -624,17 +625,60 @@ td.amt {
   letter-spacing: 0.02em;
 }
 
-.chip.new { background: var(--blue-bg); color: var(--blue); }
-.chip.followup { background: var(--amber-bg); color: var(--amber); }
-.chip.convert { background: var(--green-bg); color: var(--green); }
-.chip.close { background: var(--slate-bg); color: var(--ink-soft); }
-.chip.pending { background: var(--amber-bg); color: var(--amber); }
-.chip.approved { background: var(--blue-bg); color: var(--blue); }
-.chip.dispatched { background: #F0E9FB; color: #6A4FA0; }
-.chip.delivered { background: var(--green-bg); color: var(--green); }
-.chip.overdue { background: var(--red-bg); color: var(--red); }
-.chip.paid { background: var(--green-bg); color: var(--green); }
-.chip.unpaid { background: var(--red-bg); color: var(--red); }
+.chip.new {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.chip.followup {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.chip.convert {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.chip.close {
+  background: var(--slate-bg);
+  color: var(--ink-soft);
+}
+
+.chip.pending {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.chip.approved {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.chip.dispatched {
+  background: #F0E9FB;
+  color: #6A4FA0;
+}
+
+.chip.delivered {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.chip.overdue {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.chip.paid {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.chip.unpaid {
+  background: var(--red-bg);
+  color: var(--red);
+}
 
 .avatarname {
   display: flex;
@@ -838,7 +882,7 @@ td.amt {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 36px 40px;
-  max-width: 680px;
+  /* max-width: 680px; */
 }
 
 .invoice-doc .idoc-head {
@@ -1330,12 +1374,21 @@ table.idoc-table td {
 }
 
 @keyframes drawcheck {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 @keyframes ringpop {
-  from { transform: scale(0.6); opacity: 0.7; }
-  to { transform: scale(1.25); opacity: 0; }
+  from {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+  }
 }
 
 .success-card h4 {
@@ -1721,12 +1774,15 @@ table.idoc-table td {
   .kpirow {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .grid2 {
     grid-template-columns: 1fr;
   }
+
   .prodgrid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .zonegrid {
     grid-template-columns: 1fr;
   }
@@ -1736,6 +1792,7 @@ table.idoc-table td {
   .login-brand {
     display: none;
   }
+
   .login-formside {
     padding: 24px;
   }
@@ -1745,25 +1802,198 @@ table.idoc-table td {
   .sidebar {
     display: none;
   }
+
   .kpirow {
     grid-template-columns: 1fr;
   }
+
   .prodgrid {
     grid-template-columns: 1fr;
   }
+
   .content {
     padding: 20px;
   }
+
   .search {
     display: none;
   }
 }
 
 @keyframes fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .page-animate {
   animation: fade 0.35s ease;
+}
+
+/* ===================== PhoneInput2 MittiGold Theme ===================== */
+.mg-phone-container {
+  width: 100% !important;
+  font-family: 'Inter', sans-serif !important;
+  position: relative !important;
+}
+
+.mg-phone-container .mg-phone-input {
+  width: 100% !important;
+  height: 38px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--panel) !important;
+  color: var(--ink) !important;
+  font-size: 13.5px !important;
+  font-family: inherit !important;
+  padding-left: 48px !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.mg-phone-container .mg-phone-input:disabled {
+  background: var(--bg) !important;
+  color: var(--ink-soft) !important;
+  cursor: not-allowed !important;
+  opacity: 0.85 !important;
+}
+
+.mg-phone-container .mg-phone-input:focus {
+  border-color: var(--wheat) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.15) !important;
+}
+
+.mg-phone-container .mg-phone-button {
+  background: var(--bg) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px 0 0 8px !important;
+  padding: 0 4px !important;
+  transition: background 0.15s !important;
+}
+
+.mg-phone-container .mg-phone-button:hover,
+.mg-phone-container .mg-phone-button.open {
+  background: #FFFFFF !important;
+}
+
+/* Country Dropdown */
+.react-tel-input .country-list {
+  background: #FFFFFF !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 14px 35px rgba(18, 32, 54, 0.18) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  color: var(--ink) !important;
+  width: 320px !important;
+  max-height: 250px !important;
+  overflow-y: auto !important;
+  z-index: 99999 !important;
+  margin-top: 4px !important;
+  padding: 0 0 6px 0 !important;
+}
+
+/* Sticky Search Bar */
+.react-tel-input .country-list .search {
+  position: sticky !important;
+  top: 0 !important;
+  background: #FFFFFF !important;
+  padding: 8px 10px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  border-bottom: 1px solid var(--line) !important;
+  z-index: 10 !important;
+  box-shadow: 0 2px 6px rgba(18, 32, 54, 0.04) !important;
+}
+
+/* Hide Default Emoji */
+.react-tel-input .country-list .search-emoji {
+  display: none !important;
+}
+
+/* Lucide Search Icon via crisp SVG background in search box */
+.react-tel-input .country-list .search-box {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 32px !important;
+  padding: 6px 10px 6px 32px !important;
+  font-size: 12.5px !important;
+  font-family: inherit !important;
+  color: var(--ink) !important;
+  background-color: var(--bg) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B6472' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: 10px center !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 6px !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-tel-input .country-list .search-box:focus {
+  border-color: var(--wheat) !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 2px rgba(200, 155, 60, 0.15) !important;
+}
+
+/* Country List Item */
+.react-tel-input .country-list .country {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1.4 !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease !important;
+  border-bottom: 1px solid rgba(228, 224, 214, 0.35) !important;
+}
+
+.react-tel-input .country-list .country:last-child {
+  border-bottom: none !important;
+}
+
+.react-tel-input .country-list .country:hover,
+.react-tel-input .country-list .country.highlight {
+  background-color: var(--amber-bg) !important;
+  color: var(--navy) !important;
+}
+
+.react-tel-input .country-list .country .dial-code {
+  color: var(--ink-soft) !important;
+  margin-left: auto !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-size: 12px !important;
+  padding-left: 8px !important;
+}
+
+.react-tel-input .country-list .no-entries-message {
+  padding: 14px 12px !important;
+  font-size: 12.5px !important;
+  color: var(--ink-soft) !important;
+  text-align: center !important;
+}
+
+/* ===================== Skeleton Shimmer ===================== */
+@keyframes shimmerWave {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #EFECE5 25%, #F9F8F5 50%, #EFECE5 75%) !important;
+  background-size: 200% 100% !important;
+  animation: shimmerWave 1.4s infinite ease-in-out !important;
+  display: inline-block;
 }

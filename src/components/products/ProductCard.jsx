@@ -7,8 +7,6 @@ export const ProductCard = ({
   onEdit,
   onDelete,
 }) => {
-  const isLowStock = product.stock < 20;
-
   return (
     <div className="prodcard">
       <div className="top">
@@ -24,38 +22,36 @@ export const ProductCard = ({
         />
       </div>
 
-      <h4>{product.name}</h4>
-      <div className="pack">{product.pack} bag</div>
-      <div className="price">{product.price}</div>
-
-      <div className="stockbar">
-        <div className="stocklbl">
-          <span>
-            Stock Level
-            {product.stock_qty != null && (
-              <span style={{ marginLeft: '6px', color: 'var(--navy)', fontWeight: 600 }}>
-                · {product.stock_qty} bags
-              </span>
-            )}
-          </span>
-          <span style={{ fontWeight: 600, color: isLowStock ? 'var(--red)' : 'var(--ink)' }}>
-            {product.stock}%
-          </span>
+      {/* Product Name, Pack & Price aligned in one cohesive row */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '12px',
+          marginTop: '12px',
+        }}
+      >
+        <div>
+          <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 600 }}>{product.name}</h4>
+          <div className="pack" style={{ marginTop: '2px' }}>{product.pack} bag</div>
         </div>
-        <div className="gfill-track">
-          <div
-            className="gfill"
-            style={{
-              width: `${Math.min(100, Math.max(0, product.stock))}%`,
-              ...(isLowStock
-                ? { background: 'linear-gradient(90deg, var(--red), #d17a6e)' }
-                : {}),
-            }}
-          />
+        <div
+          className="price"
+          style={{
+            margin: 0,
+            whiteSpace: 'nowrap',
+            fontSize: '18px',
+            textAlign: 'right',
+            color: 'var(--navy)',
+            fontWeight: 700,
+          }}
+        >
+          {product.price}
         </div>
       </div>
 
-      <div className="card-actions">
+      <div className="card-actions" style={{ marginTop: '14px' }}>
         <button
           type="button"
           className="icon-sm"

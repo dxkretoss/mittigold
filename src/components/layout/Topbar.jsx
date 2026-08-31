@@ -1,20 +1,41 @@
-import React from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, Bell, Plus, Menu } from 'lucide-react';
 import { PAGE_TITLES } from '../../utils/constants';
-import { useToast } from '../../hooks/useToast';
+import { notificationService } from '../../services/notificationService';
 
 export const Topbar = ({ onOpenMobileMenu, onOpenNewOrder }) => {
   const location = useLocation();
-  const { showSuccess } = useToast();
+  const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const currentMeta = PAGE_TITLES[location.pathname] || {
     title: 'Distribution Portal',
     sub: 'FarmFlow Operations'
   };
 
+  const loadUnread = async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch (_) { }
+  };
+
+  useEffect(() => {
+    loadUnread();
+
+    const handleUpdate = () => {
+      loadUnread();
+    };
+
+    window.addEventListener('mittigold-notifications-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('mittigold-notifications-updated', handleUpdate);
+    };
+  }, []);
+
   const handleNotificationClick = () => {
-    showSuccess('Notifications', 'You are caught up. 3 orders are due for dispatch today.');
+    navigate('/notifications');
   };
 
   return (
@@ -36,24 +57,38 @@ export const Topbar = ({ onOpenMobileMenu, onOpenNewOrder }) => {
       </div>
 
       <div className="topbar-right">
-        <div className="search hidden md:flex">
+        {/* <div className="search hidden md:flex">
           <Search className="w-4 h-4 opacity-50 flex-shrink-0" />
           <input
             type="text"
             placeholder="Search distributor, order…"
             className="bg-transparent border-none outline-none text-ink text-xs w-full"
           />
-        </div>
+        </div> */}
 
         <button
           type="button"
           className="iconbtn"
           onClick={handleNotificationClick}
           aria-label="Notifications"
-          title="Notifications"
+          title={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
+          style={{ position: 'relative' }}
         >
           <Bell className="w-4 h-4 text-ink-soft" />
-          <span className="dot" />
+          {unreadCount > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '5px',
+                right: '5px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--red)',
+                border: '1.5px solid #FFFFFF',
+              }}
+            />
+          )}
         </button>
 
         <button

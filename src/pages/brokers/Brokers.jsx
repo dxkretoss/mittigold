@@ -3,6 +3,7 @@ import { Plus, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { BrokersTable } from '../../components/brokers/BrokersTable';
 import { AddBrokerModal } from '../../components/brokers/AddBrokerModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { Skeleton } from '../../components/common/Skeleton';
 import { brokerService } from '../../services/brokerService';
 import { useToast } from '../../hooks/useToast';
 
@@ -94,15 +95,73 @@ export const Brokers = () => {
 
   return (
     <div className="panel">
-      {/* Panel Header */}
-      <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      {/* Panel Header with Integrated Search Bar */}
+      <div
+        className="panel-head"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
         <div>
           <h3>Broker Performance</h3>
           <div className="hint">
             <b>{brokers.length} active</b> · Commission — paid vs pending, monthly report
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Search Bar in Table Header */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#FFFFFF',
+              border: '1px solid var(--line)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              minWidth: '220px',
+            }}
+          >
+            <Search className="w-4 h-4 text-ink-faint flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search broker name, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                width: '100%',
+                fontSize: '12.5px',
+                padding: 0,
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  padding: 0,
+                }}
+                title="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             className="btn-outline"
@@ -112,6 +171,7 @@ export const Brokers = () => {
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
+
           <button
             type="button"
             className="btn-primary"
@@ -122,68 +182,10 @@ export const Brokers = () => {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div
-        style={{
-          padding: '14px 18px 8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
-          borderBottom: '1px solid var(--line)',
-        }}
-      >
-        {/* Search */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: '#FFFFFF',
-            border: '1px solid var(--line)',
-            borderRadius: '8px',
-            padding: '6px 12px',
-            fontSize: '13px',
-            minWidth: '240px',
-          }}
-        >
-          <Search className="w-4 h-4 text-ink-faint" />
-          <input
-            type="text"
-            placeholder="Search broker name, phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              width: '100%',
-              fontSize: '12.5px',
-              padding: 0,
-            }}
-          />
-        </div>
-
-        {searchQuery && (
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => setSearchQuery('')}
-            style={{ fontSize: '11.5px', padding: '5px 9px' }}
-          >
-            Reset
-          </button>
-        )}
-      </div>
-
       {/* Table Body */}
       <div className="panel-body" style={{ paddingTop: '6px' }}>
         {loading ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-wheat mb-2" />
-            <div style={{ fontSize: '13px' }}>Loading brokers...</div>
-          </div>
+          <Skeleton variant="table" rows={5} cols={5} />
         ) : (
           <BrokersTable
             brokers={filteredBrokers}
@@ -221,4 +223,3 @@ export const Brokers = () => {
     </div>
   );
 };
-

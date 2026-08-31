@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { initialZones } from '../data/zonesData';
+import { zoneService } from './zoneService';
 
 function parseAmount(val) {
   if (typeof val === 'number') return val;
@@ -191,53 +192,12 @@ export const dashboardService = {
   },
 
   /**
-   * Calculate live zone performance from database
+   * Calculate live zone performance from database (delegates to zoneService for 100% data parity)
    */
   async getZoneMetrics() {
     try {
-      const [
-        { data: distributors },
-        { data: invoices }
-      ] = await Promise.all([
-        supabase.from('distributors').select('name, zone, city'),
-        supabase.from('invoices').select('dist, amt')
-      ]);
-
-      const distList = distributors || [];
-      const invList = invoices || [];
-
-      const zoneNames = ['South Gujarat', 'North Gujarat', 'Central Gujarat', 'Saurashtra'];
-      const zoneSales = {};
-      zoneNames.forEach(z => { zoneSales[z] = 0; });
-
-      // Associate invoices to zones via distributors
-      const distZoneMap = {};
-      distList.forEach(d => {
-        distZoneMap[(d.name || '').trim().toLowerCase()] = d.zone;
-      });
-
-      invList.forEach(inv => {
-        const zone = distZoneMap[(inv.dist || '').trim().toLowerCase()];
-        const amt = parseAmount(inv.amt);
-        if (zone && zoneSales[zone] !== undefined) {
-          zoneSales[zone] += amt;
-        }
-      });
-
-      const totalZoneSales = Object.values(zoneSales).reduce((a, b) => a + b, 0);
-
-      return zoneNames.map((name, index) => {
-        const sales = zoneSales[name] || 0;
-        const pct = totalZoneSales > 0 ? Math.round((sales / totalZoneSales) * 100) : (initialZones[index]?.pct || 25);
-        const formattedSales = sales > 0 ? `₹${sales.toLocaleString('en-IN')}` : (initialZones[index]?.sales || '₹0');
-
-        return {
-          id: `zone-${index + 1}`,
-          name,
-          pct,
-          sales: formattedSales
-        };
-      });
+      const data = await zoneService.getAll();
+      return data || [];
     } catch (err) {
       console.warn('Failed to calculate zone metrics:', err);
       return [...initialZones];

@@ -3,6 +3,7 @@ import { Plus, Search, Filter, Loader2, Package, RefreshCw } from 'lucide-react'
 import { ProductCard } from '../../components/products/ProductCard';
 import { ProductModal } from '../../components/products/ProductModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { Skeleton } from '../../components/common/Skeleton';
 import { productService } from '../../services/productService';
 import { useToast } from '../../hooks/useToast';
 
@@ -117,7 +118,8 @@ export const Products = () => {
 
     if (filterMode === 'active') return p.on === true;
     if (filterMode === 'inactive') return p.on === false;
-    if (filterMode === 'low_stock') return (p.stock || 0) < 20;
+    // Stock Level / Low Stock feature temporarily commented out for future phase
+    // if (filterMode === 'low_stock') return (p.stock || 0) < 20;
 
     return true;
   });
@@ -187,7 +189,7 @@ export const Products = () => {
             { id: 'all', label: `All (${products.length})` },
             { id: 'active', label: `Available (${products.filter((p) => p.on).length})` },
             { id: 'inactive', label: `Disabled (${products.filter((p) => !p.on).length})` },
-            { id: 'low_stock', label: `Low Stock (${products.filter((p) => p.stock < 20).length})` },
+            // Future phase: { id: 'low_stock', label: `Low Stock (${products.filter((p) => p.stock < 20).length})` },
           ].map((tab) => {
             const isSelected = filterMode === tab.id;
             return (
@@ -247,10 +249,7 @@ export const Products = () => {
 
       {/* Loading State */}
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-wheat mb-3" />
-          <div>Loading catalog products from Supabase...</div>
-        </div>
+        <Skeleton variant="cards" count={6} />
       ) : filteredProducts.length === 0 ? (
         /* Empty State */
         <div

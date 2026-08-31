@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { initials } from '../../utils/helpers';
 import { Badge } from '../common/Badge';
+import { EmptyState } from '../common/EmptyState';
 
 export const RecentLeadsTable = ({ leads = [] }) => {
   return (
@@ -26,20 +27,24 @@ export const RecentLeadsTable = ({ leads = [] }) => {
               </tr>
             </thead>
             <tbody>
-              {leads.map((l) => (
-                <tr key={l.id || l.name}>
-                  <td>
-                    <div className="avatarname">
-                      <div className="mini-av">{initials(l.name)}</div>
-                      <div className="nm">{l.name}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <Badge type="stage" variant={l.stage} />
-                  </td>
-                  <td className="zoneword">{l.owner}</td>
-                </tr>
-              ))}
+              {leads && leads.length > 0 ? (
+                leads.map((l) => (
+                  <tr key={l.id || l.name}>
+                    <td>
+                      <div className="avatarname">
+                        <div className="mini-av">{initials(l.name)}</div>
+                        <div className="nm">{l.name}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <Badge type="stage" variant={l.stage} />
+                    </td>
+                    <td className="zoneword">{l.owner}</td>
+                  </tr>
+                ))
+              ) : (
+                <EmptyState message="No recent leads activity" colSpan={3} />
+              )}
             </tbody>
           </table>
         </div>

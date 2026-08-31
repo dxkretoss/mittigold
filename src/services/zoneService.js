@@ -32,7 +32,6 @@ export const zoneService = {
 
       const distList = distributors || [];
       const invList = invoices || [];
-      const totalDistributors = distList.length;
 
       // Map distributors to zone sales from invoices
       const distZoneMap = {};
@@ -40,11 +39,17 @@ export const zoneService = {
         distZoneMap[(d.name || '').trim().toLowerCase()] = (d.zone || '').trim();
       });
 
-      const zoneSalesMap = {};
+      const zoneSalesMap = {
+        'South Gujarat': 0,
+        'North Gujarat': 0,
+        'Central Gujarat': 0,
+        'Saurashtra': 0,
+      };
+
       invList.forEach((inv) => {
         const zone = distZoneMap[(inv.dist || '').trim().toLowerCase()];
         const amt = parseAmount(inv.amt);
-        if (zone) {
+        if (zone && zoneSalesMap[zone] !== undefined) {
           zoneSalesMap[zone] = (zoneSalesMap[zone] || 0) + amt;
         }
       });
@@ -64,7 +69,7 @@ export const zoneService = {
           (d) => (d.zone || '').trim().toLowerCase() === zoneName.toLowerCase()
         );
 
-        // Dynamically extract cities from actual distributors only (No hardcoded/mock cities)
+        // Dynamically extract cities from actual distributors only
         const cityCounts = {};
         zoneDistributors.forEach((d) => {
           if (d.city && d.city.trim()) {
@@ -78,15 +83,9 @@ export const zoneService = {
           (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
         );
 
-        // Compute dynamic percentage share
-        let pct = 0;
-        if (totalSales > 0 && (zoneSalesMap[zoneName] || 0) > 0) {
-          pct = Math.round(((zoneSalesMap[zoneName] || 0) / totalSales) * 100);
-        } else if (totalDistributors > 0) {
-          pct = Math.round((zoneDistributors.length / totalDistributors) * 100);
-        }
-
+        // Percentage of total sales (consistent with Dashboard)
         const salesVal = zoneSalesMap[zoneName] || 0;
+        const pct = totalSales > 0 ? Math.round((salesVal / totalSales) * 100) : 0;
         const formattedSales = salesVal > 0 ? `₹${salesVal.toLocaleString('en-IN')}` : '₹0';
 
         return {
@@ -96,6 +95,7 @@ export const zoneService = {
           totalDistributors: zoneDistributors.length,
           pct,
           sales: formattedSales,
+          salesVal,
           cities: citiesList,
         };
       });
@@ -106,6 +106,7 @@ export const zoneService = {
         totalDistributors: 0,
         pct: 0,
         sales: '₹0',
+        salesVal: 0,
         cities: []
       }));
     }

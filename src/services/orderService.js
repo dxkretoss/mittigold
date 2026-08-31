@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { pad4 } from '../utils/helpers';
+import { notificationService } from './notificationService';
 
 /**
  * Custom Service Functions for Orders
@@ -119,6 +120,19 @@ export const orderService = {
       throw new Error(`Failed to create order: ${error.message}`);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-order-created'));
+    }
+
+    try {
+      notificationService.add({
+        type: 'order',
+        title: 'New Order Placed',
+        message: `${orderData.dist} placed order ${nextId} (${orderData.qty}).`,
+        link: '/orders',
+      }).catch(() => {});
+    } catch (_) {}
+
     return data?.[0] || payload;
   },
 
@@ -136,6 +150,60 @@ export const orderService = {
       throw new Error(`Failed to update order status: ${error.message}`);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-order-updated'));
+    }
+
     return data?.[0] || { id: orderId, status: newStatus };
+  },
+
+  /**
+   * Update full order details directly in Supabase
+   */
+  async update(orderId, orderData) {
+    const payload = {
+      dist: orderData.dist,
+      qty: orderData.qty,
+      eta: orderData.eta,
+      transport: orderData.transport || '—',
+      status: orderData.status || 'pending',
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(payload)
+      .eq('id', orderId)
+      .select();
+
+    if (error) {
+      throw new Error(`Failed to update order: ${error.message}`);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-order-updated'));
+    }
+
+    return data?.[0] || { id: orderId, ...payload };
+  },
+
+  /**
+   * Delete an order directly from Supabase
+   */
+  async delete(orderId) {
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (error) {
+      throw new Error(`Failed to delete order: ${error.message}`);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-order-deleted'));
+    }
+
+    return true;
   }
 };

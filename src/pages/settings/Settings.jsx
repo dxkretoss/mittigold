@@ -11,7 +11,7 @@ const SETTINGS_TAB_STORAGE_KEY = 'mittigold_settings_active_tab';
 const TABS = [
   { id: 'invoice', label: 'Invoice Settings', icon: FileText },
   { id: 'password', label: 'Change Password', icon: KeyRound },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
+  // { id: 'security', label: 'Security', icon: ShieldCheck },
 ];
 
 export const Settings = () => {
@@ -30,7 +30,7 @@ export const Settings = () => {
       if (savedTab && TABS.some(t => t.id === savedTab)) {
         return savedTab;
       }
-    } catch (_) {}
+    } catch (_) { }
     return 'invoice';
   };
 
@@ -52,7 +52,7 @@ export const Settings = () => {
       setActiveTab(urlTab);
       try {
         localStorage.setItem(SETTINGS_TAB_STORAGE_KEY, urlTab);
-      } catch (_) {}
+      } catch (_) { }
     }
   }, [searchParams]);
 
@@ -61,7 +61,7 @@ export const Settings = () => {
     setSearchParams({ tab: tabId }, { replace: true });
     try {
       localStorage.setItem(SETTINGS_TAB_STORAGE_KEY, tabId);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const handleSaveInvoiceSettings = async (updatedSettings) => {
@@ -104,7 +104,7 @@ export const Settings = () => {
 
       {/* Tab 1: Invoice Settings */}
       {activeTab === 'invoice' && (
-        <div style={{ maxWidth: '820px' }}>
+        <div>
           <InvoiceSettingsForm
             initialSettings={settings}
             onSave={handleSaveInvoiceSettings}
@@ -114,14 +114,14 @@ export const Settings = () => {
 
       {/* Tab 2: Change Password */}
       {activeTab === 'password' && (
-        <div style={{ maxWidth: '640px' }}>
+        <div>
           <ChangePasswordForm />
         </div>
       )}
 
       {/* Tab 3: Security & Session */}
       {activeTab === 'security' && (
-        <div style={{ maxWidth: '640px' }}>
+        <div>
           <div className="panel">
             <div className="panel-head">
               <div>
