@@ -224,6 +224,50 @@ VALUES
     ('MG-INV-00228', 'Anand Agro Supplies', '₹58,300', 'pending', '24 Jul 2026', 5, '[{"name":"Chakki Fresh Atta","pack":"30 kg","qty":"40 bags","amount":53600}]'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
+-- ------------------------------------------------------------------------------
+-- 5. DISTRIBUTORS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.distributors (
+    id TEXT PRIMARY KEY DEFAULT ('dist-' || gen_random_uuid()),
+    name TEXT NOT NULL,
+    zone TEXT NOT NULL,
+    city TEXT NOT NULL,
+    area TEXT NOT NULL,
+    target INTEGER DEFAULT 80,
+    outstanding TEXT DEFAULT '₹0',
+    pay TEXT DEFAULT 'paid' CHECK (pay IN ('paid', 'unpaid')),
+    phone TEXT,
+    gstin TEXT,
+    billing TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.distributors ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read distributors" ON public.distributors;
+CREATE POLICY "Allow anon read distributors" ON public.distributors FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert distributors" ON public.distributors;
+CREATE POLICY "Allow anon insert distributors" ON public.distributors FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update distributors" ON public.distributors;
+CREATE POLICY "Allow anon update distributors" ON public.distributors FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete distributors" ON public.distributors;
+CREATE POLICY "Allow anon delete distributors" ON public.distributors FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Distributors
+INSERT INTO public.distributors (id, name, zone, city, area, target, outstanding, pay, gstin, billing)
+VALUES 
+    ('dist-1', 'Ramesh Trading Co.', 'South Gujarat', 'Surat', 'Adajan', 92, '₹45,200', 'unpaid', '24ABCPT4567F1Z2', '12, Adajan Patiya, Ring Road, Surat, Gujarat 395009'),
+    ('dist-2', 'Shree Umiya Traders', 'Central Gujarat', 'Ahmedabad', 'Bopal', 105, '₹0', 'paid', '24AAEPU9081C1ZH', 'Shop 4, Bopal Cross Road, Ahmedabad, Gujarat 380058'),
+    ('dist-3', 'Patel Distributors', 'North Gujarat', 'Mehsana', 'Highway Rd', 78, '₹12,000', 'unpaid', '24AAFPP2233D1Z9', 'Highway Road, Near Bus Stand, Mehsana, Gujarat 384002'),
+    ('dist-4', 'Saurashtra Foods', 'Saurashtra', 'Rajkot', 'Kalawad Rd', 61, '₹28,500', 'unpaid', '24AAGPS5566E1Z4', 'Kalawad Road, Rajkot, Gujarat 360005'),
+    ('dist-5', 'Anand Agro Supplies', 'Central Gujarat', 'Anand', 'Vidyanagar', 88, '₹6,400', 'paid', '24AAHPA7788G1Z1', 'Vidyanagar Char Rasta, Anand, Gujarat 388120'),
+    ('dist-6', 'Navsari Wholesale', 'South Gujarat', 'Navsari', 'Station Rd', 70, '₹19,100', 'unpaid', '24AAJPN3344H1Z6', 'Station Road, Near Railway Crossing, Navsari, Gujarat 396445')
+ON CONFLICT (id) DO NOTHING;
+
 -- Verification
-SELECT * FROM public.invoices;
+SELECT * FROM public.distributors;
 

@@ -1,80 +1,126 @@
-import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { useToast } from '../../hooks/useToast';
 
-export const AddDistributorModal = ({ isOpen, onClose, zones = [], onAdd }) => {
+export const AddDistributorModal = ({
+  isOpen,
+  onClose,
+  zones = [],
+  distributor = null,
+  onAdd,
+  onUpdate,
+}) => {
+  const isEditing = !!distributor?.id;
   const { showSuccess } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     zone: '',
     city: '',
     area: '',
-    target: 0,
+    target: 80,
+    outstanding: '₹0',
+    pay: 'paid',
     phone: '',
     gstin: '',
     sameBilling: true,
     billing: '',
   });
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (distributor) {
+      setFormData({
+        name: distributor.name || '',
+        zone: distributor.zone || '',
+        city: distributor.city || '',
+        area: distributor.area || '',
+        target: distributor.target !== undefined ? distributor.target : 80,
+        outstanding: distributor.outstanding || '₹0',
+        pay: distributor.pay || 'paid',
+        phone: distributor.phone || '',
+        gstin: distributor.gstin || '',
+        sameBilling: !distributor.billing || distributor.billing === `${distributor.area}, ${distributor.city}`,
+        billing: distributor.billing || '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        zone: zones[0]?.name || '',
+        city: '',
+        area: '',
+        target: 80,
+        outstanding: '₹0',
+        pay: 'paid',
+        phone: '',
+        gstin: '',
+        sameBilling: true,
+        billing: '',
+      });
+    }
+  }, [distributor, isOpen, zones]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.zone || !formData.city || !formData.area) return;
 
+    setLoading(true);
     const billingText = formData.sameBilling
-      ? `${formData.area}, ${formData.city}`
+      ? `${formData.area.trim()}, ${formData.city.trim()}`
       : formData.billing.trim();
 
-    const newDist = {
+    const distPayload = {
       name: formData.name.trim(),
       zone: formData.zone,
       city: formData.city.trim(),
       area: formData.area.trim(),
       target: parseInt(formData.target) || 0,
+      outstanding: formData.outstanding?.trim() || '₹0',
+      pay: formData.pay || 'paid',
       phone: formData.phone.trim(),
       gstin: formData.gstin.trim(),
       billing: billingText,
-      outstanding: '₹0',
-      pay: 'paid',
     };
 
-    onAdd(newDist);
-    showSuccess('Distributor Added', `${newDist.name} is now active in ${newDist.zone}.`);
-    onClose();
-
-    // Reset form
-    setFormData({
-      name: '',
-      zone: '',
-      city: '',
-      area: '',
-      target: 0,
-      phone: '',
-      gstin: '',
-      sameBilling: true,
-      billing: '',
-    });
+    try {
+      if (isEditing && onUpdate) {
+        await onUpdate(distPayload, distributor.id);
+        showSuccess('Distributor Updated', `${distPayload.name} updated successfully.`);
+      } else if (onAdd) {
+        await onAdd(distPayload);
+        showSuccess('Distributor Added', `${distPayload.name} is now active in ${distPayload.zone}.`);
+      }
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Distributor"
+      title={isEditing ? 'Edit Distributor' : 'Add New Distributor'}
       footer={
         <>
-          <button className="btn-outline" type="button" onClick={onClose}>
+          <button className="btn-outline" type="button" onClick={onClose} disabled={loading}>
             Cancel
           </button>
           <button
             className="btn-primary"
             type="button"
-            onClick={(e) => {
+            disabled={loading}
+            onClick={() => {
               const form = document.getElementById('addDistributorForm');
               if (form) form.requestSubmit();
             }}
           >
-            <Check className="w-3.5 h-3.5" /> Add Distributor
+            {loading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Check className="w-3.5 h-3.5" />
+            )}
+            {isEditing ? 'Save Changes' : 'Add Distributor'}
           </button>
         </>
       }
@@ -142,27 +188,50 @@ export const AddDistributorModal = ({ isOpen, onClose, zones = [], onAdd }) => {
           </div>
         </div>
 
-        <div className="f-group">
-          <label>Contact Number</label>
-          <input
-            type="tel"
-            placeholder="+91 90000 00000"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-          />
+        <div className="f-row">
+          <div className="f-group">
+            <label>Outstanding Amount (₹)</label>
+            <input
+              type="text"
+              placeholder="e.g. ₹45,200"
+              value={formData.outstanding}
+              onChange={(e) => setFormData({ ...formData, outstanding: e.target.value })}
+            />
+          </div>
+          <div className="f-group">
+            <label>Payment Status</label>
+            <select
+              value={formData.pay}
+              onChange={(e) => setFormData({ ...formData, pay: e.target.value })}
+            >
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
         </div>
 
-        <div className="f-group">
-          <label>GSTIN (optional)</label>
-          <input
-            type="text"
-            placeholder="e.g. 24ABCPT4567F1Z2"
-            value={formData.gstin}
-            onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-          />
+        <div className="f-row">
+          <div className="f-group">
+            <label>Contact Number</label>
+            <input
+              type="tel"
+              placeholder="+91 90000 00000"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+          <div className="f-group">
+            <label>GSTIN (optional)</label>
+            <input
+              type="text"
+              placeholder="e.g. 24ABCPT4567F1Z2"
+              value={formData.gstin}
+              onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+            />
+          </div>
         </div>
 
-        <div className="f-group f-check" style={{ marginBottom: '8px' }}>
+        <div className="f-group f-check" style={{ marginBottom: '8px', marginTop: '4px' }}>
           <input
             type="checkbox"
             id="dSameBilling"
