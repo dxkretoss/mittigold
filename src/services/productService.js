@@ -1,8 +1,31 @@
 import { supabase } from '../lib/supabase';
 
+const PRODUCT_IMAGES_KEY = 'mittigold_product_images';
+
+function getLocalImages() {
+  try {
+    const raw = localStorage.getItem(PRODUCT_IMAGES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLocalImage(productId, imageBase64) {
+  try {
+    const map = getLocalImages();
+    if (imageBase64) {
+      map[productId] = imageBase64;
+    } else {
+      delete map[productId];
+    }
+    localStorage.setItem(PRODUCT_IMAGES_KEY, JSON.stringify(map));
+  } catch (_) {}
+}
+
 /**
  * Custom Service Functions for Products
- * 100% Dynamic Supabase queries (No static data)
+ * 100% Dynamic Supabase queries with image support
  */
 export const productService = {
   /**
@@ -18,7 +41,12 @@ export const productService = {
       throw new Error(`Failed to load products: ${error.message}`);
     }
 
-    return data || [];
+    const localImages = getLocalImages();
+
+    return (data || []).map((p) => ({
+      ...p,
+      image: localImages[p.id] || p.image || null,
+    }));
   },
 
   /**
@@ -36,7 +64,9 @@ export const productService = {
       throw new Error(`Failed to update stock: ${error.message}`);
     }
 
-    return data?.[0] || null;
+    const localImages = getLocalImages();
+    const res = data?.[0] || null;
+    return res ? { ...res, image: localImages[res.id] || res.image || null } : null;
   },
 
   /**
@@ -49,32 +79,45 @@ export const productService = {
       price: productData.price,
       stock: productData.stock ?? 80,
       stock_qty: productData.stock_qty !== undefined ? productData.stock_qty : null,
-      on: productData.on ?? true
+      on: productData.on ?? true,
     };
 
+    if (productData.image) {
+      payload.image = productData.image;
+    }
+
     try {
+      let result = null;
       const { data, error } = await supabase
         .from('products')
         .insert([payload])
         .select();
 
       if (error) {
-        // Graceful fallback if stock_qty column not yet migrated in Supabase
-        if (error.code === '42703' || error.message?.includes('stock_qty')) {
-          console.warn('⚠️ stock_qty column not in Supabase schema. Run migration to persist.');
-          const fallbackPayload = { ...payload };
-          delete fallbackPayload.stock_qty;
-          const { data: fbData, error: fbError } = await supabase
-            .from('products')
-            .insert([fallbackPayload])
-            .select();
-          if (fbError) throw fbError;
-          return fbData?.[0] || null;
-        }
-        throw error;
+        // Fallback without extra non-schema columns
+        const fallbackPayload = {
+          name: productData.name,
+          pack: productData.pack,
+          price: productData.price,
+          stock: productData.stock ?? 80,
+          on: productData.on ?? true,
+        };
+        const { data: fbData, error: fbError } = await supabase
+          .from('products')
+          .insert([fallbackPayload])
+          .select();
+        if (fbError) throw fbError;
+        result = fbData?.[0] || null;
+      } else {
+        result = data?.[0] || null;
       }
 
-      return data?.[0] || null;
+      if (result && productData.image) {
+        saveLocalImage(result.id, productData.image);
+        result.image = productData.image;
+      }
+
+      return result;
     } catch (err) {
       throw new Error(`Failed to add product: ${err.message}`);
     }
@@ -91,10 +134,15 @@ export const productService = {
       stock: productData.stock,
       stock_qty: productData.stock_qty !== undefined ? productData.stock_qty : null,
       on: productData.on,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
+    if (productData.image !== undefined) {
+      payload.image = productData.image;
+    }
+
     try {
+      let result = null;
       const { data, error } = await supabase
         .from('products')
         .update(payload)
@@ -102,23 +150,37 @@ export const productService = {
         .select();
 
       if (error) {
-        // Graceful fallback if stock_qty column not yet migrated in Supabase
-        if (error.code === '42703' || error.message?.includes('stock_qty')) {
-          console.warn('⚠️ stock_qty column not in Supabase schema. Run migration to persist.');
-          const fallbackPayload = { ...payload };
-          delete fallbackPayload.stock_qty;
-          const { data: fbData, error: fbError } = await supabase
-            .from('products')
-            .update(fallbackPayload)
-            .eq('id', id)
-            .select();
-          if (fbError) throw fbError;
-          return fbData?.[0] || null;
-        }
-        throw error;
+        // Fallback without extra non-schema columns
+        const fallbackPayload = {
+          name: productData.name,
+          pack: productData.pack,
+          price: productData.price,
+          stock: productData.stock,
+          on: productData.on,
+          updated_at: new Date().toISOString(),
+        };
+        const { data: fbData, error: fbError } = await supabase
+          .from('products')
+          .update(fallbackPayload)
+          .eq('id', id)
+          .select();
+        if (fbError) throw fbError;
+        result = fbData?.[0] || null;
+      } else {
+        result = data?.[0] || null;
       }
 
-      return data?.[0] || null;
+      if (result) {
+        if (productData.image !== undefined) {
+          saveLocalImage(id, productData.image);
+          result.image = productData.image;
+        } else {
+          const localImages = getLocalImages();
+          result.image = localImages[id] || result.image || null;
+        }
+      }
+
+      return result;
     } catch (err) {
       throw new Error(`Failed to update product: ${err.message}`);
     }
@@ -137,6 +199,8 @@ export const productService = {
     if (error) {
       throw new Error(`Failed to delete product: ${error.message}`);
     }
+
+    saveLocalImage(id, null);
 
     return data?.[0] || null;
   }

@@ -5,6 +5,88 @@ import { parseAmt, fmtINR } from '../../utils/formatCurrency';
 import { useToast } from '../../hooks/useToast';
 import html2pdf from 'html2pdf.js';
 
+function extractNameAndPack(rawName = '', rawPack = '') {
+  let name = String(rawName || '').trim();
+  let pack = String(rawPack || '').trim();
+
+  // If pack is missing or '—', extract from parenthesis e.g. "Sooji (30 kg)" -> name: "Sooji", pack: "30 kg"
+  if (!pack || pack === '—') {
+    const packMatch = name.match(/\(([^)]+)\)/);
+    if (packMatch) {
+      pack = packMatch[1].trim();
+      name = name.replace(/\([^)]+\)/, '').trim();
+    } else {
+      const kgMatch = name.match(/(\d+\s*kg)/i);
+      if (kgMatch) {
+        pack = kgMatch[1].trim();
+        name = name.replace(/(\d+\s*kg)/i, '').trim();
+      }
+    }
+  } else if (name.includes('(') && name.includes(')')) {
+    name = name.replace(/\([^)]+\)/, '').trim();
+  }
+
+  // Clean trailing dashes or dots
+  name = name.replace(/[-–·•\s]+$/, '').trim();
+
+  // Default pack fallback based on catalog
+  if (!pack || pack === '—') {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('sooji') || lowerName.includes('rava') || lowerName.includes('maida') || lowerName.includes('atta')) {
+      pack = '30 kg';
+    } else {
+      pack = '30 kg';
+    }
+  }
+
+  return { name: name || 'Commercial Flour Batch', pack };
+}
+
+function normalizeInvoiceItems(rawItems, invoiceAmt) {
+  if (Array.isArray(rawItems) && rawItems.length > 0) {
+    return rawItems.map((it) => {
+      const { name, pack } = extractNameAndPack(it.name, it.pack);
+      const qty = it.qty ? (String(it.qty).includes('bag') ? String(it.qty) : `${it.qty} bags`) : '1 bag';
+      const amount = it.amount !== undefined ? parseAmt(it.amount) : (it.price ? it.price * (parseInt(String(qty).replace(/\D/g, ''), 10) || 1) : (parseAmt(invoiceAmt) / rawItems.length));
+      return {
+        name,
+        pack,
+        qty,
+        amount,
+      };
+    });
+  }
+
+  if (typeof rawItems === 'string' && rawItems.trim()) {
+    try {
+      const parsed = JSON.parse(rawItems);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return normalizeInvoiceItems(parsed, invoiceAmt);
+      }
+    } catch (_) {}
+
+    const parts = rawItems.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      return parts.map((part) => {
+        const qtyMatch = part.match(/^(\d+)\s*(?:bags|pcs|pkts|kg)?/i) || part.match(/(\d+)/);
+        const qty = qtyMatch ? `${qtyMatch[1]} bags` : '1 bag';
+        const rawItemText = part.replace(/^\d+\s*(?:bags|pcs|pkts|kg)?\s*[·•-]?\s*/i, '').trim() || part;
+        const { name, pack } = extractNameAndPack(rawItemText, '');
+        return {
+          name,
+          pack,
+          qty,
+          amount: Math.round(parseAmt(invoiceAmt) / parts.length),
+        };
+      });
+    }
+  }
+
+  return [
+    { name: 'Commercial Flour Batch', pack: '30 kg', qty: '1 Lot', amount: parseAmt(invoiceAmt) || 0 },
+  ];
+}
+
 export const InvoiceDocument = ({
   invoice,
   companySettings,
@@ -25,15 +107,12 @@ export const InvoiceDocument = ({
     );
   }
 
-  const items = invoice.items && invoice.items.length > 0 ? invoice.items : [
-    { name: 'Mixed SKU', pack: '—', qty: '—', amount: parseAmt(invoice.amt) },
-  ];
-
+  const items = normalizeInvoiceItems(invoice.items, invoice.amt);
   const subtotal = items.reduce((s, it) => s + parseAmt(it.amount), 0);
   const gstRate =
     typeof invoice.gstRate === 'number'
       ? invoice.gstRate
-      : 5;
+      : (invoice.gst_rate ?? 5);
   const gst = Math.round((subtotal * gstRate) / 100);
   const total = subtotal + gst;
 
@@ -121,20 +200,20 @@ export const InvoiceDocument = ({
           </div>
         </div>
 
-        {/* Items Table */}
-        <table className="idoc-table">
+        {/* Items Table with Fixed Column Widths */}
+        <table className="idoc-table" style={{ width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Pack</th>
-              <th>Qty</th>
-              <th style={{ textAlign: 'right' }}>Amount</th>
+              <th style={{ width: '42%' }}>Item</th>
+              <th style={{ width: '20%' }}>Pack</th>
+              <th style={{ width: '18%' }}>Qty</th>
+              <th style={{ width: '20%', textAlign: 'right' }}>Amount</th>
             </tr>
           </thead>
           <tbody>
             {items.map((it, idx) => (
               <tr key={idx}>
-                <td>{it.name}</td>
+                <td style={{ fontWeight: 500, color: 'var(--navy)' }}>{it.name}</td>
                 <td>{it.pack || '—'}</td>
                 <td>{it.qty || '—'}</td>
                 <td className="amt" style={{ textAlign: 'right' }}>

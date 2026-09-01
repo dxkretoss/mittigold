@@ -3,6 +3,7 @@ import { initialDistributors } from '../data/distributorsData';
 import { notificationService } from './notificationService';
 
 const DISTRIBUTORS_STORAGE_KEY = 'mittigold_distributors_data';
+const DISTRIBUTOR_PAYMENTS_KEY = 'mittigold_distributor_payments';
 
 function getLocalDistributors() {
   try {
@@ -18,6 +19,20 @@ function saveLocalDistributors(distributors) {
   } catch (_) {}
 }
 
+function getLocalPayments() {
+  try {
+    const stored = localStorage.getItem(DISTRIBUTOR_PAYMENTS_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch (_) {}
+  return [];
+}
+
+function saveLocalPayments(payments) {
+  try {
+    localStorage.setItem(DISTRIBUTOR_PAYMENTS_KEY, JSON.stringify(payments));
+  } catch (_) {}
+}
+
 export const distributorService = {
   /**
    * Fetch all distributors from Supabase (with localStorage fallback)
@@ -28,7 +43,7 @@ export const distributorService = {
       const { data, error } = await supabase
         .from('distributors')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (data && !error && data.length > 0) {
         const remoteIds = new Set(data.map(d => d.id));
@@ -46,14 +61,14 @@ export const distributorService = {
             };
           }),
           ...localOnly
-        ];
+        ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         saveLocalDistributors(merged);
         return merged;
       }
     } catch (err) {
       console.warn('Supabase distributors query error, falling back to local:', err);
     }
-    return local;
+    return local.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   },
 
   /**
@@ -94,7 +109,7 @@ export const distributorService = {
 
       if (!error && data?.[0]) {
         const local = getLocalDistributors();
-        saveLocalDistributors([...local, data[0]]);
+        saveLocalDistributors([data[0], ...local.filter(d => d.id !== data[0].id)]);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('mittigold-distributor-created'));
         }
@@ -105,7 +120,7 @@ export const distributorService = {
     }
 
     const local = getLocalDistributors();
-    const updated = [...local, newDist];
+    const updated = [newDist, ...local.filter(d => d.id !== newDist.id)];
     saveLocalDistributors(updated);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mittigold-distributor-created'));
@@ -248,11 +263,191 @@ export const distributorService = {
     }
 
     const local = getLocalDistributors();
-    const filtered = local.filter((d) => d.id !== id);
-    saveLocalDistributors(filtered);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('mittigold-distributor-deleted'));
+    const all = await this.getAll();
+    const filtered = all.filter((d) => d.id !== id && String(d.id) !== String(id));
+
+    try {
+      await supabase.from('distributors').delete().eq('id', id);
+    } catch (err) {
+      console.warn('Supabase delete distributor fallback to local:', err);
     }
+
+    saveLocalDistributors(filtered);
+    this.notify('deleted', { id });
     return true;
+  },
+
+  /**
+   * Update payment status and proof
+   */
+  async updatePayment(id, status, proofData = null) {
+    const payload = {
+      pay: status,
+    };
+    if (proofData) {
+      payload.payment_proof = proofData.payment_proof || null;
+      payload.payment_date = proofData.payment_date || null;
+      payload.payment_mode = proofData.payment_mode || null;
+      payload.payment_ref = proofData.payment_ref || null;
+      payload.payment_notes = proofData.payment_notes || null;
+    }
+    return this.update(id, payload);
+  },
+
+  /**
+   * Fetch all payment records for a distributor
+   */
+  async getPayments(distributorId, distName = '') {
+    const allPayments = getLocalPayments();
+    let distPayments = allPayments.filter(
+      (p) =>
+        p.distributorId === distributorId ||
+        String(p.distributorId) === String(distributorId) ||
+        (distName && (p.distributorName || '').toLowerCase() === distName.toLowerCase())
+    );
+
+    return distPayments.sort((a, b) => new Date(b.created_at || b.payment_date) - new Date(a.created_at || a.payment_date));
+  },
+
+  /**
+   * Add a new payment record for a distributor with screenshot proof
+   */
+  async addPayment(distributorId, paymentData) {
+    const allDistributors = await this.getAll();
+    const dist = allDistributors.find((d) => d.id === distributorId || String(d.id) === String(distributorId));
+    if (!dist) throw new Error('Distributor not found');
+
+    const numAmount = typeof paymentData.amount === 'number'
+      ? paymentData.amount
+      : parseFloat(String(paymentData.amount).replace(/[^0-9.]/g, '')) || 0;
+
+    const newPayment = {
+      id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      distributorId: dist.id,
+      distributorName: dist.name,
+      amount: `₹${numAmount.toLocaleString('en-IN')}`,
+      amountNum: numAmount,
+      payment_date: paymentData.payment_date || new Date().toISOString(),
+      payment_mode: paymentData.payment_mode || 'UPI',
+      payment_ref: paymentData.payment_ref || '',
+      payment_proof: paymentData.payment_proof || null,
+      payment_notes: paymentData.payment_notes || '',
+      created_at: new Date().toISOString(),
+    };
+
+    const allPayments = getLocalPayments();
+    saveLocalPayments([newPayment, ...allPayments]);
+    
+    await this.updatePayment(dist.id, 'paid', newPayment);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-payment-created', { detail: newPayment }));
+    }
+    return newPayment;
+  },
+
+  /**
+   * Delete a payment record
+   */
+  async deletePayment(paymentId, distributorId) {
+    const allPayments = getLocalPayments();
+    const filtered = allPayments.filter((p) => p.id !== paymentId);
+    saveLocalPayments(filtered);
+    return true;
+  },
+
+  /**
+   * Fetch complete 360-degree details for a distributor:
+   * Profile + Orders breakdown + Invoices + Payment Ledger
+   */
+  async getDetails(distributorId) {
+    const allDistributors = await this.getAll();
+    const cleanId = String(distributorId || '').trim();
+    const decodedName = decodeURIComponent(cleanId).toLowerCase();
+
+    const distributor = allDistributors.find(
+      (d) =>
+        d.id === distributorId ||
+        String(d.id) === cleanId ||
+        (d.name && d.name.trim().toLowerCase() === decodedName)
+    );
+    if (!distributor) return null;
+
+    const distName = (distributor.name || '').trim().toLowerCase();
+    const distId = String(distributor.id || '').toLowerCase();
+
+    // 1. Fetch all orders for this distributor via orderService
+    let orders = [];
+    try {
+      const allOrders = await orderService.getAll('all');
+      orders = allOrders.filter((o) => {
+        const orderDist = (o.dist || o.distributor || o.distributor_name || '').trim().toLowerCase();
+        const orderDistId = String(o.dist_id || o.distributor_id || '').toLowerCase();
+
+        return (
+          orderDist === distName ||
+          (orderDistId && orderDistId === distId) ||
+          (orderDist && distName && (orderDist.includes(distName) || distName.includes(orderDist)))
+        );
+      });
+    } catch (_) {
+      orders = [];
+    }
+
+    // 2. Fetch all invoices for this distributor via invoiceService
+    let invoices = [];
+    try {
+      const allInvoices = await invoiceService.getAll();
+      invoices = allInvoices.filter((inv) => {
+        const invDist = (inv.dist || inv.distributor || '').trim().toLowerCase();
+        return (
+          invDist === distName ||
+          (invDist && distName && (invDist.includes(distName) || distName.includes(invDist)))
+        );
+      });
+    } catch (_) {
+      invoices = [];
+    }
+
+    // 3. Fetch payment history & receipts
+    const payments = await this.getPayments(distributor.id, distributor.name);
+
+    // Compute summary metrics
+    const deliveredOrders = orders.filter((o) => o.status === 'delivered');
+    const pendingOrders = orders.filter((o) => o.status !== 'delivered');
+
+    // Total invoiced
+    const totalInvoiced = invoices.reduce((sum, inv) => {
+      const num = parseFloat(String(inv.amt || '').replace(/[^0-9.]/g, '')) || 0;
+      return sum + num;
+    }, 0);
+
+    // Total paid
+    const totalPaid = payments.reduce((sum, p) => {
+      const num = p.amountNum || parseFloat(String(p.amount || '').replace(/[^0-9.]/g, '')) || 0;
+      return sum + num;
+    }, 0);
+
+    return {
+      distributor,
+      orders,
+      invoices,
+      payments,
+      summary: {
+        totalOrders: orders.length,
+        deliveredOrdersCount: deliveredOrders.length,
+        pendingOrdersCount: pendingOrders.length,
+        totalInvoices: invoices.length,
+        totalPayments: payments.length,
+        totalInvoiced,
+        totalPaid,
+      }
+    };
+  },
+
+  notify(eventType, data) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-updated', { detail: { eventType, data } }));
+    }
   }
 };

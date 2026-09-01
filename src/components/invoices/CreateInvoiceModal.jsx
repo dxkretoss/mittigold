@@ -39,7 +39,7 @@ export const CreateInvoiceModal = ({
           setDist(invoice.dist || '');
           setGstRate(invoice.gstRate !== undefined ? invoice.gstRate : 5);
           setStatus(invoice.status || 'pending');
-          if (invoice.items && invoice.items.length > 0 && prods && prods.length > 0) {
+          if (Array.isArray(invoice.items) && invoice.items.length > 0 && prods && prods.length > 0) {
             const mapped = invoice.items.map((item) => {
               const pIdx = prods.findIndex(
                 (p) => p.name.toLowerCase() === (item.name || '').toLowerCase()

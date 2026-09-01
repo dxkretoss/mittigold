@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { OrdersTable } from '../../components/orders/OrdersTable';
 import { NewOrderModal } from '../../components/orders/NewOrderModal';
+import { DispatchModal } from '../../components/orders/DispatchModal';
+import { OrderDetailsModal } from '../../components/orders/OrderDetailsModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Skeleton } from '../../components/common/Skeleton';
 import { orderService } from '../../services/orderService';
+import { invoiceService } from '../../services/invoiceService';
 import { useToast } from '../../hooks/useToast';
 import { ORDER_STATUS_LABELS } from '../../utils/constants';
 
@@ -16,7 +19,15 @@ export const Orders = () => {
     isOpen: false,
     order: null,
   });
+  const [viewModalState, setViewModalState] = useState({
+    isOpen: false,
+    order: null,
+  });
   const [deleteDialog, setDeleteDialog] = useState({
+    isOpen: false,
+    order: null,
+  });
+  const [dispatchDialog, setDispatchDialog] = useState({
     isOpen: false,
     order: null,
   });
@@ -53,6 +64,25 @@ export const Orders = () => {
   }, []);
 
   const handleStatusChange = async (orderId, newStatus) => {
+    const targetOrder = orders.find((o) => o.id === orderId);
+
+    // Validation: Cannot directly jump from pending/approved to delivered without dispatching first
+    if (newStatus === 'delivered' && targetOrder && targetOrder.status !== 'dispatched') {
+      showError(
+        'Dispatch Required First',
+        `Order ${orderId} must be Dispatched before marking as Delivered so that transport details and Tax Invoice are generated.`
+      );
+      setDispatchDialog({ isOpen: true, order: targetOrder });
+      return;
+    }
+
+    if (newStatus === 'dispatched') {
+      if (targetOrder) {
+        setDispatchDialog({ isOpen: true, order: targetOrder });
+        return;
+      }
+    }
+
     try {
       await orderService.updateStatus(orderId, newStatus);
       await loadOrders();
@@ -60,6 +90,60 @@ export const Orders = () => {
       showSuccess('Status Updated', `Order ${orderId} marked as ${statusText}.`);
     } catch (err) {
       showError('Status Update Failed', err.message);
+    }
+  };
+
+  const handleConfirmDispatch = async ({ order, transport, dispatchDate, orderVal, driverName }) => {
+    try {
+      // 1. Update order status and transport details
+      await orderService.update(order.id, {
+        dist: order.dist,
+        qty: order.qty,
+        eta: dispatchDate,
+        transport: driverName ? `${transport} (${driverName})` : transport,
+        status: 'dispatched',
+        items: order.items,
+      });
+
+      // 2. Automatically generate and issue tax invoice for the dispatched order
+      const structuredItems = Array.isArray(order.items) && order.items.length > 0
+        ? order.items.map((it) => {
+            const q = parseInt(String(it.qty).replace(/\D/g, ''), 10) || 1;
+            const p = it.price || 1000;
+            return {
+              name: it.name,
+              pack: it.pack || '30 kg',
+              qty: `${q} bags`,
+              price: p,
+              amount: p * q,
+            };
+          })
+        : order.items || order.qty;
+
+      const invoicePayload = {
+        order_id: order.id,
+        dist: order.dist,
+        amt: orderVal,
+        date: dispatchDate,
+        items: structuredItems,
+        status: 'pending',
+        gstRate: 5,
+      };
+
+      const createdInvoice = await invoiceService.add(invoicePayload);
+
+      // 3. Dispatch events and reload
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mittigold-invoice-created'));
+      }
+      await loadOrders();
+
+      showSuccess(
+        'Order Dispatched & Invoice Created',
+        `Order ${order.id} dispatched via ${transport}. Tax Invoice ${createdInvoice.id || ''} (${orderVal}) generated automatically.`
+      );
+    } catch (err) {
+      showError('Dispatch Failed', err.message);
     }
   };
 
@@ -159,11 +243,26 @@ export const Orders = () => {
           <OrdersTable
             orders={filteredOrders}
             onStatusChange={handleStatusChange}
+            onView={(o) => setViewModalState({ isOpen: true, order: o })}
             onEdit={handleOpenEdit}
             onDelete={handleOpenDelete}
           />
         )}
       </div>
+
+      <OrderDetailsModal
+        isOpen={viewModalState.isOpen}
+        order={viewModalState.order}
+        onClose={() => setViewModalState({ isOpen: false, order: null })}
+        onEdit={(o) => {
+          setViewModalState({ isOpen: false, order: null });
+          handleOpenEdit(o);
+        }}
+        onDispatch={(o) => {
+          setViewModalState({ isOpen: false, order: null });
+          setDispatchDialog({ isOpen: true, order: o });
+        }}
+      />
 
       <NewOrderModal
         isOpen={modalState.isOpen}
@@ -171,6 +270,13 @@ export const Orders = () => {
         onClose={() => setModalState({ isOpen: false, order: null })}
         onOrderCreated={loadOrders}
         onOrderUpdated={loadOrders}
+      />
+
+      <DispatchModal
+        isOpen={dispatchDialog.isOpen}
+        order={dispatchDialog.order}
+        onClose={() => setDispatchDialog({ isOpen: false, order: null })}
+        onConfirmDispatch={handleConfirmDispatch}
       />
 
       <ConfirmDialog

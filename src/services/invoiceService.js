@@ -39,14 +39,14 @@ export const invoiceService = {
           gstRate: item.gst_rate ?? item.gstRate ?? 5,
           items: typeof item.items === 'string' ? JSON.parse(item.items) : (item.items || []),
           created_at: item.created_at
-        }));
+        })).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || String(b.id).localeCompare(String(a.id)));
         saveLocalInvoices(formatted);
         return formatted;
       }
     } catch (err) {
       console.warn('Supabase invoices query error, falling back to local:', err);
     }
-    return getLocalInvoices();
+    return getLocalInvoices().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || String(b.id).localeCompare(String(a.id)));
   },
 
   /**
@@ -92,6 +92,9 @@ export const invoiceService = {
         };
         const local = getLocalInvoices();
         saveLocalInvoices([saved, ...local.filter((i) => i.id !== saved.id)]);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mittigold-invoice-created', { detail: saved }));
+        }
         return saved;
       }
     } catch (err) {
@@ -105,6 +108,9 @@ export const invoiceService = {
     };
     const local = getLocalInvoices();
     saveLocalInvoices([fallback, ...local.filter((i) => i.id !== fallback.id)]);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-invoice-created', { detail: fallback }));
+    }
     return fallback;
   },
 

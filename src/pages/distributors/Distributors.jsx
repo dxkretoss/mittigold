@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, RefreshCw, Loader2, Users } from 'lucide-react';
 import { DistributorsTable } from '../../components/distributors/DistributorsTable';
 import { AddDistributorModal } from '../../components/distributors/AddDistributorModal';
@@ -10,6 +11,7 @@ import { zoneService } from '../../services/zoneService';
 import { useToast } from '../../hooks/useToast';
 
 export const Distributors = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [distributors, setDistributors] = useState([]);
   const [zones, setZones] = useState([]);
@@ -52,6 +54,10 @@ export const Distributors = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleOpenDetails = (distributor) => {
+    navigate(`/distributors/${distributor.id}`);
+  };
 
   const handleOpenAdd = () => {
     setModalState({ isOpen: true, distributor: null });
@@ -171,19 +177,21 @@ export const Distributors = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             type="button"
-            className="btn-outline"
-            onClick={loadData}
-            title="Refresh Distributors"
-            style={{ padding: '7px 11px' }}
+            className="btn btn-primary"
+            onClick={handleOpenAdd}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
+            <span>Add Distributor</span>
           </button>
           <button
             type="button"
-            className="btn-primary"
-            onClick={handleOpenAdd}
+            className="btn-outline"
+            onClick={loadData}
+            title="Refresh list"
+            style={{ padding: '7px 9px' }}
           >
-            <Plus className="w-3.5 h-3.5" /> Add Distributor
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -191,7 +199,7 @@ export const Distributors = () => {
       {/* Filter and Search Bar */}
       <div
         style={{
-          padding: '14px 18px 8px',
+          padding: '14px 18px 10px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -211,13 +219,15 @@ export const Distributors = () => {
             borderRadius: '8px',
             padding: '6px 12px',
             fontSize: '13px',
-            minWidth: '240px',
+            minWidth: '260px',
+            maxWidth: '360px',
+            flex: '1 1 260px',
           }}
         >
           <Search className="w-4 h-4 text-ink-faint" />
           <input
             type="text"
-            placeholder="Search name, city, phone..."
+            placeholder="Search name, city, phone, zone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -233,11 +243,12 @@ export const Distributors = () => {
 
         {/* Zone & Payment Filters */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Zone Filter */}
           <select
             value={selectedZone}
             onChange={(e) => setSelectedZone(e.target.value)}
             style={{
-              padding: '6px 10px',
+              padding: '6px 12px',
               borderRadius: '7px',
               border: '1px solid var(--line)',
               fontSize: '12px',
@@ -254,11 +265,12 @@ export const Distributors = () => {
             ))}
           </select>
 
+          {/* Payment Filter */}
           <select
             value={selectedPayment}
             onChange={(e) => setSelectedPayment(e.target.value)}
             style={{
-              padding: '6px 10px',
+              padding: '6px 12px',
               borderRadius: '7px',
               border: '1px solid var(--line)',
               fontSize: '12px',
@@ -298,8 +310,7 @@ export const Distributors = () => {
             distributors={filteredDistributors}
             onEdit={handleOpenEdit}
             onDelete={handleOpenDelete}
-            onTogglePayment={handleTogglePayment}
-            onOpenPaymentProof={handleOpenPaymentProof}
+            onViewDetails={handleOpenDetails}
           />
         )}
       </div>
@@ -310,11 +321,12 @@ export const Distributors = () => {
         distributor={modalState.distributor}
         onClose={() => setModalState({ isOpen: false, distributor: null })}
         zones={zones}
+        allDistributors={distributors}
         onAdd={handleAddDistributor}
         onUpdate={handleUpdateDistributor}
       />
 
-      {/* Payment Proof Modal */}
+      {/* Payment Proof Modal (kept for backward compatibility) */}
       <PaymentProofModal
         isOpen={paymentModalState.isOpen}
         distributor={paymentModalState.distributor}

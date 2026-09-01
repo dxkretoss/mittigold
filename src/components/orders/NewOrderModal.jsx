@@ -6,6 +6,7 @@ import { productService } from '../../services/productService';
 import { orderService } from '../../services/orderService';
 import { formatDateDisplay } from '../../utils/formatDate';
 import { useToast } from '../../hooks/useToast';
+import { parseItemPrice } from '../../utils/orderPriceHelper';
 
 function convertDateToInput(dateStr) {
   if (!dateStr || dateStr === '—') return '';
@@ -171,16 +172,19 @@ export const NewOrderModal = ({
           name: p.name,
           pack: p.pack,
           qty: q,
+          price: p.price ? (parseFloat(String(p.price).replace(/[^0-9.]/g, '')) || 0) : parseItemPrice(p.name, p.pack),
         };
       });
 
       const orderPayload = {
         dist,
         qty: lineDescriptions.join(', '),
+        original_qty: order?.original_qty || (isEditing ? (order?.qty || lineDescriptions.join(', ')) : lineDescriptions.join(', ')),
         eta: formatDateDisplay(eta),
         transport: transport.trim() || '—',
         status: status || 'pending',
         items: structuredItems,
+        original_items: order?.original_items || (isEditing ? (order?.items || structuredItems) : structuredItems),
       };
 
       if (isEditing) {
@@ -200,6 +204,13 @@ export const NewOrderModal = ({
       setIsSubmitting(false);
     }
   };
+
+  const liveOrderTotal = lines.reduce((sum, line) => {
+    const p = products[line.productIndex] || products[0];
+    const q = parseInt(line.qty, 10) || 0;
+    const rate = p?.price ? (parseFloat(String(p.price).replace(/[^0-9.]/g, '')) || 0) : parseItemPrice(p?.name, p?.pack);
+    return sum + q * rate;
+  }, 0);
 
   return (
     <Modal
@@ -234,6 +245,22 @@ export const NewOrderModal = ({
       }
     >
       <form id="newOrderForm" onSubmit={handleSubmit}>
+        {isEditing && (
+          <div style={{ background: '#FAF9F6', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--navy)' }}>
+              Order Review & Stock Allocation
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '2px' }}>
+              Adjust fulfilled quantities based on available plant stock before dispatching.
+            </div>
+            {order?.original_qty && order?.original_qty !== order?.qty && (
+              <div style={{ fontSize: '11.5px', color: 'var(--amber)', marginTop: '4px', fontWeight: 600 }}>
+                • Originally Requested: {order.original_qty}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="f-group">
           <label>Distributor *</label>
           <select
@@ -313,6 +340,14 @@ export const NewOrderModal = ({
           </button>
         </div>
 
+        {/* Live Order Value Calculation Box */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAF9F6', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 14px', margin: '10px 0 14px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--navy)' }}>Calculated Total Value:</span>
+          <span className="mono" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--green)' }}>
+            ₹{liveOrderTotal.toLocaleString('en-IN')}
+          </span>
+        </div>
+
         <div className="f-row">
           <div className="f-group">
             <label>Estimated Delivery *</label>
@@ -326,7 +361,7 @@ export const NewOrderModal = ({
             />
           </div>
           <div className="f-group">
-            <label>Transport (optional)</label>
+            <label>Transport / Vehicle (optional)</label>
             <input
               type="text"
               placeholder="e.g. Tata Ace · GJ-05-AB-1123"

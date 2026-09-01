@@ -3,6 +3,7 @@ import { distributorService } from './distributorService';
 import { orderService } from './orderService';
 import { invoiceService } from './invoiceService';
 import { productService } from './productService';
+import { formatIndianCurrencyWords, formatAchievementPercent } from '../utils/helpers';
 
 function parseAmount(val) {
   if (typeof val === 'number') return val;
@@ -12,11 +13,37 @@ function parseAmount(val) {
 }
 
 const PREDEFINED_ZONES = [
-  { id: 'zone-1', zone_number: 1, name: 'South Gujarat' },
-  { id: 'zone-2', zone_number: 2, name: 'North Gujarat' },
-  { id: 'zone-3', zone_number: 3, name: 'Central Gujarat' },
-  { id: 'zone-4', zone_number: 4, name: 'Saurashtra' },
+  { id: 'zone-1', zone_number: 1, name: 'South Gujarat', target: 100000 },
+  { id: 'zone-2', zone_number: 2, name: 'North Gujarat', target: 80000 },
+  { id: 'zone-3', zone_number: 3, name: 'Central Gujarat', target: 150000 },
+  { id: 'zone-4', zone_number: 4, name: 'Saurashtra', target: 50000 },
 ];
+
+const DEFAULT_TARGETS = {
+  'zone-1': 100000,
+  'zone-2': 80000,
+  'zone-3': 150000,
+  'zone-4': 50000,
+  'South Gujarat': 100000,
+  'North Gujarat': 80000,
+  'Central Gujarat': 150000,
+  'Saurashtra': 50000,
+};
+
+function getCustomTargets() {
+  try {
+    const raw = localStorage.getItem('mittigold_zone_targets');
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveCustomTargets(targets) {
+  try {
+    localStorage.setItem('mittigold_zone_targets', JSON.stringify(targets));
+  } catch (_) {}
+}
 
 function calculateOrderValue(order, productPriceMap) {
   let parsedItems = order?.items;
@@ -82,7 +109,7 @@ function calculateOrderValue(order, productPriceMap) {
 
 export const zoneService = {
   /**
-   * Fetch 4 predefined zones with dynamically extracted cities and live calculated distributor sales
+   * Fetch 4 predefined zones with dynamically extracted cities, live calculated distributor sales, and targets
    */
   async getAll() {
     let distList = [];
@@ -193,6 +220,7 @@ export const zoneService = {
     });
 
     const totalSales = Object.values(zoneSalesMap).reduce((a, b) => a + b, 0);
+    const customTargets = getCustomTargets();
 
     // 4 Predefined Zones
     const baseZones = (zonesData && zonesData.length > 0)
@@ -201,6 +229,7 @@ export const zoneService = {
 
     return baseZones.map((z, idx) => {
       const zoneName = z.name;
+      const zoneId = z.id || `zone-${idx + 1}`;
 
       // Find all distributors in this zone
       const zoneDistributors = distList.filter(
@@ -221,21 +250,68 @@ export const zoneService = {
         (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
       );
 
+      // Target resolution: custom storage -> database -> default
+      const targetVal = parseAmount(
+        customTargets[zoneId] ??
+        customTargets[zoneName] ??
+        z.target ??
+        DEFAULT_TARGETS[zoneId] ??
+        DEFAULT_TARGETS[zoneName] ??
+        100000
+      );
+
       // Percentage of total sales
       const salesVal = zoneSalesMap[zoneName] || 0;
       const pct = totalSales > 0 ? Math.round((salesVal / totalSales) * 100) : 0;
       const formattedSales = salesVal > 0 ? `₹${salesVal.toLocaleString('en-IN')}` : '₹0';
+      const formattedTarget = `₹${Number(targetVal).toLocaleString('en-IN')}`;
+      const rawAchievementPct = targetVal > 0 ? (salesVal / targetVal) * 100 : 0;
+      const formattedAchievement = formatAchievementPercent(salesVal, targetVal);
+      const targetWords = formatIndianCurrencyWords(targetVal);
 
       return {
-        id: z.id || `zone-${idx + 1}`,
+        id: zoneId,
         zone_number: z.zone_number || idx + 1,
         name: zoneName,
         totalDistributors: zoneDistributors.length,
         pct,
+        target: targetVal,
+        targetWords,
+        formattedTarget,
+        achievementPct: rawAchievementPct,
+        formattedAchievement,
         sales: formattedSales,
         salesVal,
         cities: citiesList,
       };
     });
+  },
+
+  /**
+   * Update zone sales target
+   */
+  async updateTarget(zoneIdentifier, targetAmount) {
+    const numericTarget = parseAmount(targetAmount);
+    if (numericTarget < 0) throw new Error('Target must be a positive value');
+
+    // 1. Update localStorage
+    const customTargets = getCustomTargets();
+    customTargets[zoneIdentifier] = numericTarget;
+    saveCustomTargets(customTargets);
+
+    // 2. Try Supabase update if online / schema supported
+    try {
+      if (zoneIdentifier.startsWith('zone-')) {
+        await supabase.from('zones').update({ target: numericTarget }).eq('id', zoneIdentifier);
+      } else {
+        await supabase.from('zones').update({ target: numericTarget }).eq('name', zoneIdentifier);
+      }
+    } catch (_) {}
+
+    // 3. Dispatch update events
+    window.dispatchEvent(new CustomEvent('mittigold-zone-updated', { detail: { id: zoneIdentifier, target: numericTarget } }));
+    window.dispatchEvent(new CustomEvent('mittigold-zone-target-updated', { detail: { id: zoneIdentifier, target: numericTarget } }));
+
+    return { success: true, id: zoneIdentifier, target: numericTarget };
   },
 };

@@ -9,7 +9,9 @@ import { Dashboard } from '../pages/dashboard/Dashboard';
 import { Zones } from '../pages/zones/Zones';
 import { Leads } from '../pages/leads/Leads';
 import { Distributors } from '../pages/distributors/Distributors';
+import { DistributorDetail } from '../pages/distributors/DistributorDetail';
 import { Brokers } from '../pages/brokers/Brokers';
+import { BrokerDetail } from '../pages/brokers/BrokerDetail';
 import { Orders } from '../pages/orders/Orders';
 import { Invoices } from '../pages/invoices/Invoices';
 import { Products } from '../pages/products/Products';
@@ -37,7 +39,9 @@ export const AppRoutes = () => {
         <Route path="zones" element={<Zones />} />
         <Route path="leads" element={<Leads />} />
         <Route path="distributors" element={<Distributors />} />
+        <Route path="distributors/:id" element={<DistributorDetail />} />
         <Route path="brokers" element={<Brokers />} />
+        <Route path="brokers/:id" element={<BrokerDetail />} />
         <Route path="orders" element={<Orders />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="products" element={<Products />} />

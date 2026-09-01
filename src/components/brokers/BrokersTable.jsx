@@ -1,12 +1,12 @@
 import React from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Eye } from 'lucide-react';
 import { initials } from '../../utils/helpers';
 import { Badge } from '../common/Badge';
 import { EmptyState } from '../common/EmptyState';
 import { Pagination } from '../common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 
-export const BrokersTable = ({ brokers = [], onEdit, onDelete }) => {
+export const BrokersTable = ({ brokers = [], onView, onEdit, onDelete }) => {
   const {
     currentPage,
     totalPages,
@@ -28,7 +28,7 @@ export const BrokersTable = ({ brokers = [], onEdit, onDelete }) => {
               <th>Total Orders</th>
               <th>Commission Earned</th>
               <th>Paid / Pending</th>
-              <th style={{ width: '90px', textAlign: 'center' }}>Actions</th>
+              <th style={{ width: '135px', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -36,10 +36,17 @@ export const BrokersTable = ({ brokers = [], onEdit, onDelete }) => {
               paginatedData.map((b) => (
                 <tr key={b.id || b.name}>
                   <td>
-                    <div className="avatarname">
+                    <div
+                      className="avatarname"
+                      style={{ cursor: onView ? 'pointer' : 'default' }}
+                      onClick={() => onView && onView(b)}
+                      title="Click to view broker 360 profile, sourced orders and payout receipts"
+                    >
                       <div className="mini-av">{initials(b.name)}</div>
                       <div>
-                        <div className="nm">{b.name}</div>
+                        <div className="nm" style={{ fontWeight: 600, color: 'var(--navy)' }}>
+                          {b.name}
+                        </div>
                         {b.phone && (
                           <div className="zoneword" style={{ fontSize: '11px', marginTop: '1px' }}>
                             {b.phone}
@@ -66,7 +73,28 @@ export const BrokersTable = ({ brokers = [], onEdit, onDelete }) => {
                     </div>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
+                      {onView && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => onView(b)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11.5px',
+                            height: '28px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderRadius: '6px',
+                            color: 'var(--navy)',
+                          }}
+                          title="View Sourced Orders & Payment Receipts"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-wheat" />
+                          <span>View</span>
+                        </button>
+                      )}
                       {onEdit && (
                         <button
                           type="button"

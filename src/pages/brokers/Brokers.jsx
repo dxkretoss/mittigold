@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { BrokersTable } from '../../components/brokers/BrokersTable';
 import { AddBrokerModal } from '../../components/brokers/AddBrokerModal';
@@ -8,6 +9,7 @@ import { brokerService } from '../../services/brokerService';
 import { useToast } from '../../hooks/useToast';
 
 export const Brokers = () => {
+  const navigate = useNavigate();
   const [brokers, setBrokers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,6 +191,7 @@ export const Brokers = () => {
         ) : (
           <BrokersTable
             brokers={filteredBrokers}
+            onView={(b) => navigate(`/brokers/${encodeURIComponent(b.id || b.name)}`)}
             onEdit={handleOpenEdit}
             onDelete={handleOpenDelete}
           />

@@ -51,12 +51,16 @@ export const Dashboard = () => {
     window.addEventListener('mittigold-order-updated', handleUpdate);
     window.addEventListener('mittigold-lead-updated', handleUpdate);
     window.addEventListener('mittigold-lead-created', handleUpdate);
+    window.addEventListener('mittigold-zone-updated', handleUpdate);
+    window.addEventListener('mittigold-zone-target-updated', handleUpdate);
 
     return () => {
       window.removeEventListener('mittigold-order-created', handleUpdate);
       window.removeEventListener('mittigold-order-updated', handleUpdate);
       window.removeEventListener('mittigold-lead-updated', handleUpdate);
       window.removeEventListener('mittigold-lead-created', handleUpdate);
+      window.removeEventListener('mittigold-zone-updated', handleUpdate);
+      window.removeEventListener('mittigold-zone-target-updated', handleUpdate);
     };
   }, []);
 

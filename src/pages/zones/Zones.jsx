@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Target, Pencil } from 'lucide-react';
 import { zoneService } from '../../services/zoneService';
 import { GrainGauge } from '../../components/common/GrainGauge';
 import { Skeleton } from '../../components/common/Skeleton';
+import { SetZoneTargetModal } from '../../components/zones/SetZoneTargetModal';
 
 export const Zones = () => {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
 
   const loadZones = async () => {
     try {
@@ -29,27 +33,42 @@ export const Zones = () => {
     window.addEventListener('mittigold-distributor-updated', handleUpdate);
     window.addEventListener('mittigold-distributor-deleted', handleUpdate);
     window.addEventListener('mittigold-order-created', handleUpdate);
+    window.addEventListener('mittigold-zone-updated', handleUpdate);
+    window.addEventListener('mittigold-zone-target-updated', handleUpdate);
 
     return () => {
       window.removeEventListener('mittigold-distributor-created', handleUpdate);
       window.removeEventListener('mittigold-distributor-updated', handleUpdate);
       window.removeEventListener('mittigold-distributor-deleted', handleUpdate);
       window.removeEventListener('mittigold-order-created', handleUpdate);
+      window.removeEventListener('mittigold-zone-updated', handleUpdate);
+      window.removeEventListener('mittigold-zone-target-updated', handleUpdate);
     };
   }, []);
 
+  const handleOpenTargetModal = (zone) => {
+    setSelectedZone(zone);
+    setIsTargetModalOpen(true);
+  };
+
+  const handleTargetUpdated = () => {
+    loadZones();
+  };
+
   return (
     <div>
-      <p
-        style={{
-          color: 'var(--ink-soft)',
-          maxWidth: '640px',
-          margin: '-6px 0 22px',
-          fontSize: '13.5px',
-        }}
-      >
-        4 predefined zones, linked only to the Distributor module. Assigned once — Zone → City → Area — when Admin adds a new distributor.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', margin: '-6px 0 22px' }}>
+        <p
+          style={{
+            color: 'var(--ink-soft)',
+            maxWidth: '640px',
+            margin: 0,
+            fontSize: '13.5px',
+          }}
+        >
+          4 predefined zones, linked to the Distributor module. Admin can configure sales targets for each zone to track live performance and fill lines.
+        </p>
+      </div>
 
       {loading ? (
         <div className="zonegrid">
@@ -78,9 +97,36 @@ export const Zones = () => {
                     <b>{z.totalDistributors || 0}</b> active {z.totalDistributors === 1 ? 'distributor' : 'distributors'}
                   </div>
                 </div>
-                <span className="zn-no">
-                  ZONE {z.zone_number ? (z.zone_number < 10 ? `0${z.zone_number}` : z.zone_number) : (i + 1 < 10 ? `0${i + 1}` : i + 1)}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTargetModal(z)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 9px',
+                      background: 'var(--slate-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      fontSize: '11.5px',
+                      color: 'var(--ink)',
+                      cursor: 'pointer',
+                      transition: 'all .15s ease',
+                    }}
+                    title="Click to change target for this zone"
+                  >
+                    <Target className="w-3.5 h-3.5" style={{ color: 'var(--wheat)' }} />
+                    <span style={{ color: 'var(--ink-soft)' }}>Target:</span>
+                    <span className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>
+                      {z.formattedTarget}
+                    </span>
+                    <Pencil className="w-3 h-3" style={{ color: 'var(--ink-soft)', marginLeft: '2px' }} />
+                  </button>
+                  <span className="zn-no">
+                    ZONE {z.zone_number ? (z.zone_number < 10 ? `0${z.zone_number}` : z.zone_number) : (i + 1 < 10 ? `0${i + 1}` : i + 1)}
+                  </span>
+                </div>
               </div>
 
               <div className="breadcrumb-zone" style={{ marginTop: '8px', marginBottom: '12px' }}>
@@ -88,7 +134,10 @@ export const Zones = () => {
               </div>
 
               <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-                <GrainGauge percent={z.pct || 0} />
+                <GrainGauge
+                  percent={z.achievementPct || 0}
+                  color={z.achievementPct >= 100 ? 'green' : ''}
+                />
               </div>
 
               <div
@@ -98,12 +147,39 @@ export const Zones = () => {
                   marginBottom: '14px',
                   fontSize: '11.5px',
                   color: 'var(--ink-soft)',
+                  alignItems: 'center',
                 }}
               >
-                <span>Share of total sales</span>
-                <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
-                  <span className="mono">{z.pct || 0}%</span> {z.sales && z.sales !== '₹0' ? `(${z.sales})` : ''}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span>Sales:</span>
+                  <span className="mono" style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                    {z.sales || '₹0'}
+                  </span>
+                  <span style={{ color: 'var(--line)', margin: '0 2px' }}>/</span>
+                  <span className="mono" style={{ color: 'var(--ink-soft)' }}>
+                    {z.formattedTarget}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>
+                    Share: <b className="mono">{z.pct || 0}%</b>
+                  </span>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: z.achievementPct >= 100 ? 'var(--green)' : 'var(--navy)',
+                      background: z.achievementPct >= 100 ? 'var(--green-bg)' : 'var(--slate-bg)',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11.5px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                    }}
+                  >
+                    <span className="mono">{z.formattedAchievement || `${z.achievementPct || 0}%`}</span> achieved
+                  </span>
+                </div>
               </div>
 
               <div className="citylist">
@@ -122,6 +198,19 @@ export const Zones = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Target Setting Modal */}
+      {selectedZone && (
+        <SetZoneTargetModal
+          isOpen={isTargetModalOpen}
+          onClose={() => {
+            setIsTargetModalOpen(false);
+            setSelectedZone(null);
+          }}
+          zone={selectedZone}
+          onTargetUpdated={handleTargetUpdated}
+        />
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 import React from 'react';
-import { ChevronDown, Edit2, Trash2 } from 'lucide-react';
+import { ChevronDown, Edit2, Trash2, Eye } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
 import { Pagination } from '../common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
+import { computeOrderValue } from '../../utils/orderPriceHelper';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -11,18 +12,65 @@ const STATUS_OPTIONS = [
   { value: 'delivered', label: 'Delivered' },
 ];
 
-function renderQtySummary(qtyStr, items) {
+function getAllowedStatusOptions(currentStatus) {
+  if (currentStatus === 'pending' || currentStatus === 'approved') {
+    return [
+      { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'dispatched', label: 'Dispatched' },
+    ];
+  }
+  if (currentStatus === 'dispatched') {
+    return [
+      { value: 'dispatched', label: 'Dispatched' },
+      { value: 'delivered', label: 'Delivered' },
+      { value: 'approved', label: 'Approved' },
+    ];
+  }
+  return STATUS_OPTIONS;
+}
+
+function renderQtySummary(qtyStr, items, originalQty) {
   if (!qtyStr) return '—';
 
-  // If structured items exist and length > 1
-  if (Array.isArray(items) && items.length > 1) {
-    const first = `${items[0].qty} bags · ${items[0].name}${items[0].pack ? ` (${items[0].pack})` : ''}`;
-    const extraCount = items.length - 1;
-    const fullTooltip = items.map((it) => `${it.qty} bags · ${it.name} (${it.pack})`).join('\n');
+  const isAdjusted = Boolean(
+    originalQty &&
+    String(originalQty).trim() &&
+    String(originalQty).trim() !== String(qtyStr).trim()
+  );
 
-    return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }} title={fullTooltip}>
-        <span>{first}</span>
+  let mainQty = qtyStr;
+  let extraBadge = null;
+  let fullTooltip = qtyStr;
+
+  if (Array.isArray(items) && items.length > 1) {
+    mainQty = `${items[0].qty} bags · ${items[0].name}${items[0].pack ? ` (${items[0].pack})` : ''}`;
+    const extraCount = items.length - 1;
+    fullTooltip = items.map((it) => `${it.qty} bags · ${it.name} (${it.pack})`).join('\n');
+    extraBadge = (
+      <span
+        style={{
+          fontSize: '11px',
+          fontWeight: 700,
+          padding: '2px 6px',
+          borderRadius: '999px',
+          background: 'var(--amber-bg)',
+          color: 'var(--amber)',
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+        }}
+        title={fullTooltip}
+      >
+        +{extraCount} more
+      </span>
+    );
+  } else if (typeof qtyStr === 'string' && qtyStr.includes(',')) {
+    const parts = qtyStr.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      mainQty = parts[0];
+      const extraCount = parts.length - 1;
+      fullTooltip = parts.join('\n');
+      extraBadge = (
         <span
           style={{
             fontSize: '11px',
@@ -38,45 +86,42 @@ function renderQtySummary(qtyStr, items) {
         >
           +{extraCount} more
         </span>
-      </div>
-    );
-  }
-
-  // If qtyStr is a comma-separated string of items
-  if (typeof qtyStr === 'string') {
-    const parts = qtyStr.split(',').map((s) => s.trim()).filter(Boolean);
-    if (parts.length > 1) {
-      const first = parts[0];
-      const extraCount = parts.length - 1;
-      const fullTooltip = parts.join('\n');
-
-      return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }} title={fullTooltip}>
-          <span>{first}</span>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: '999px',
-              background: 'var(--amber-bg)',
-              color: 'var(--amber)',
-              whiteSpace: 'nowrap',
-              cursor: 'help',
-            }}
-            title={fullTooltip}
-          >
-            +{extraCount} more
-          </span>
-        </div>
       );
     }
   }
 
-  return <span>{qtyStr}</span>;
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }} title={fullTooltip}>
+      <span style={{ fontWeight: 500, color: 'var(--navy)' }}>{mainQty}</span>
+      {extraBadge}
+      {isAdjusted && (
+        <span
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            background: 'var(--amber-bg)',
+            color: 'var(--amber)',
+            padding: '1px 6px',
+            borderRadius: '4px',
+            border: '1px solid rgba(185, 131, 46, 0.35)',
+            cursor: 'help',
+          }}
+          title={`Originally ordered ${originalQty} (adjusted by Admin). Click View to see breakdown.`}
+        >
+          Adjusted
+        </span>
+      )}
+    </div>
+  );
 }
 
-export const OrdersTable = ({ orders = [], onStatusChange, onEdit, onDelete }) => {
+export const OrdersTable = ({
+  orders = [],
+  onStatusChange,
+  onView,
+  onEdit,
+  onDelete,
+}) => {
   const {
     currentPage,
     totalPages,
@@ -94,25 +139,42 @@ export const OrdersTable = ({ orders = [], onStatusChange, onEdit, onDelete }) =
         <table>
           <thead>
             <tr>
-              <th>Order ID</th>
+              <th style={{ width: '120px' }}>Order ID</th>
               <th>Distributor</th>
               <th>Qty</th>
-              <th>Est. Delivery</th>
-              <th>Transport</th>
-              <th>Status</th>
-              <th style={{ textAlign: 'right' }}>ACTIONS</th>
+              <th style={{ width: '110px' }}>Order Value</th>
+              <th style={{ width: '110px' }}>Est. Delivery</th>
+              <th style={{ width: '110px' }}>Transport</th>
+              <th style={{ width: '115px' }}>Status</th>
+              <th style={{ textAlign: 'right', width: '135px' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.length > 0 ? (
               paginatedData.map((o) => (
                 <tr key={o.id}>
-                  <td className="mono">{o.id}</td>
-                  <td>{o.dist}</td>
-                  <td className="zoneword">{renderQtySummary(o.qty, o.items)}</td>
+                  <td
+                    className="mono"
+                    style={{ cursor: onView ? 'pointer' : 'default', fontWeight: 600 }}
+                    onClick={() => onView && onView(o)}
+                    title="Click to view full order details"
+                  >
+                    {o.id}
+                  </td>
+                  <td
+                    style={{ fontWeight: 600, color: 'var(--navy)', cursor: onView ? 'pointer' : 'default' }}
+                    onClick={() => onView && onView(o)}
+                    title="Click to view full order details"
+                  >
+                    {o.dist}
+                  </td>
+                  <td className="zoneword">{renderQtySummary(o.qty, o.items, o.original_qty)}</td>
+                  <td className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>
+                    {computeOrderValue(o)}
+                  </td>
                   <td className="zoneword">{o.eta}</td>
                   <td className="zoneword">{o.transport}</td>
-                  <td>
+                  <td style={{ width: '115px' }}>
                     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                       <select
                         value={o.status}
@@ -125,15 +187,16 @@ export const OrdersTable = ({ orders = [], onStatusChange, onEdit, onDelete }) =
                           appearance: 'none',
                           WebkitAppearance: 'none',
                           MozAppearance: 'none',
-                          paddingRight: '22px',
+                          padding: '3px 20px 3px 8px',
                           fontSize: '11px',
                           fontWeight: 700,
                           fontFamily: 'inherit',
                           textTransform: 'capitalize',
+                          whiteSpace: 'nowrap',
                         }}
                         title="Click to change order status"
                       >
-                        {STATUS_OPTIONS.map((opt) => (
+                        {getAllowedStatusOptions(o.status).map((opt) => (
                           <option
                             key={opt.value}
                             value={opt.value}
@@ -156,7 +219,28 @@ export const OrdersTable = ({ orders = [], onStatusChange, onEdit, onDelete }) =
                     </div>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
+                      {onView && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => onView(o)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11.5px',
+                            height: '28px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderRadius: '6px',
+                            color: 'var(--navy)',
+                          }}
+                          title="View Order Details & Audit Comparison"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-wheat" />
+                          <span>View</span>
+                        </button>
+                      )}
                       {onEdit && (
                         <button
                           type="button"
@@ -182,7 +266,7 @@ export const OrdersTable = ({ orders = [], onStatusChange, onEdit, onDelete }) =
                 </tr>
               ))
             ) : (
-              <EmptyState message="No orders in this status" colSpan={7} />
+              <EmptyState message="No orders in this status" colSpan={8} />
             )}
           </tbody>
         </table>

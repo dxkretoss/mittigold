@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, Loader2, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { DEFAULT_PRODUCT_IMAGE, getProductImage } from '../../utils/productImageHelper';
 
 export const ProductModal = ({
   isOpen,
@@ -10,11 +11,13 @@ export const ProductModal = ({
 }) => {
   const isEditing = !!product?.id;
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: '',
     pack: '',
     price: '',
+    image: null,
     stock_qty: '',
     stock: 80,
     on: true,
@@ -26,6 +29,7 @@ export const ProductModal = ({
         name: product.name || '',
         pack: product.pack || '',
         price: String(product.price || '').replace('₹', '').trim(),
+        image: product.image || null,
         stock_qty: product.stock_qty != null ? product.stock_qty : '',
         stock: product.stock ?? 80,
         on: product.on ?? true,
@@ -35,12 +39,39 @@ export const ProductModal = ({
         name: '',
         pack: '',
         price: '',
+        image: null,
         stock_qty: '',
         stock: 80,
         on: true,
       });
     }
   }, [product, isOpen]);
+
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, JPEG, WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size exceeds 5MB. Please choose a smaller image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((prev) => ({ ...prev, image: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, image: null }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +83,7 @@ export const ProductModal = ({
       name: formData.name.trim(),
       pack: formData.pack.trim(),
       price: `₹${cleanPrice}`,
+      image: formData.image || null,
       stock_qty: formData.stock_qty !== '' && formData.stock_qty != null ? parseInt(formData.stock_qty) || 0 : null,
       stock: parseInt(formData.stock) || 0,
       on: formData.on,
@@ -64,6 +96,8 @@ export const ProductModal = ({
       setLoading(false);
     }
   };
+
+  const activePreview = formData.image || DEFAULT_PRODUCT_IMAGE;
 
   return (
     <Modal
@@ -95,6 +129,96 @@ export const ProductModal = ({
       }
     >
       <form id="productForm" onSubmit={handleSubmit}>
+        {/* Product Image Upload Section */}
+        <div className="f-group" style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '6px' }}>Product Thumbnail Image</label>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              padding: '12px',
+              background: '#FAF9F5',
+              border: '1px solid var(--line)',
+              borderRadius: '8px',
+            }}
+          >
+            <div
+              style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                border: '1px solid var(--line)',
+                background: '#FFFFFF',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <img
+                src={activePreview}
+                alt="Product Preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  style={{ display: 'none' }}
+                  id="productImageInput"
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <Upload className="w-3.5 h-3.5 text-wheat" />
+                  <span>{formData.image ? 'Change Image' : 'Upload Image'}</span>
+                </button>
+
+                {formData.image && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleRemoveImage}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      height: '30px',
+                      color: 'var(--red)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                    title="Reset to default image"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '6px' }}>
+                {formData.image ? 'Custom image uploaded.' : 'Using default MittiGold product package.'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="f-group">
           <label>Product Name</label>
           <input
@@ -130,43 +254,6 @@ export const ProductModal = ({
             />
           </div>
         </div>
-
-        {/* Stock Qty & Level fields commented out for future phase
-        <div className="f-group">
-          <label>Stock Qty (Bags / Units)</label>
-          <input
-            type="number"
-            min="0"
-            placeholder="e.g. 150"
-            value={formData.stock_qty}
-            onChange={(e) =>
-              setFormData({ ...formData, stock_qty: e.target.value })
-            }
-          />
-        </div>
-
-        <div className="f-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-            <label style={{ margin: 0 }}>Stock Level</label>
-            <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '13px', fontWeight: 600, color: formData.stock < 20 ? 'var(--red)' : 'var(--navy)' }}>
-              {formData.stock}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={formData.stock}
-            onChange={(e) =>
-              setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
-            }
-            style={{
-              marginTop: '10px',
-              background: `linear-gradient(to right, ${formData.stock < 20 ? 'var(--red)' : 'var(--wheat)'} 0%, ${formData.stock < 20 ? 'var(--red)' : 'var(--wheat)'} ${formData.stock}%, #E4E0D6 ${formData.stock}%, #E4E0D6 100%)`
-            }}
-          />
-        </div>
-        */}
 
         <div className="f-group f-check" style={{ marginTop: '6px' }}>
           <input
