@@ -31,7 +31,7 @@ function parseDetailedItems(order) {
       const name = it.name || 'Commercial Flour';
       const pack = it.pack || '30 kg';
       const fulfilledQty = parseInt(String(it.qty).replace(/\D/g, ''), 10) || 1;
-      const rate = it.price || parseItemPrice(name, pack);
+      const rate = it.price != null && !isNaN(Number(it.price)) ? Number(it.price) : parseItemPrice(name, pack);
 
       let origQty = null;
       if (originalMap[idx] && originalMap[idx].qty !== null) {

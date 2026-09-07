@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Check, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, CheckCircle2, Users } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { PhoneInput } from '../common/PhoneInput';
 import { SearchableSelect } from '../common/SearchableSelect';
 import { useToast } from '../../hooks/useToast';
+import { brokerService } from '../../services/brokerService';
+import { employeeService } from '../../services/employeeService';
 import {
   GUJARAT_ZONES_TERRITORY,
   getCitiesForZone,
@@ -22,6 +24,9 @@ export const AddDistributorModal = ({
   const isEditing = !!distributor?.id;
   const { showSuccess } = useToast();
   const [loading, setLoading] = useState(false);
+  const [brokers, setBrokers] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
   const [formData, setFormData] = useState({
     name: '',
     zone: 'South Gujarat',
@@ -30,9 +35,19 @@ export const AddDistributorModal = ({
     target: 80,
     phone: '',
     gstin: '',
+    reference_type: 'company',
+    reference_id: '',
+    reference_name: 'Company Own',
     sameBilling: true,
     billing: '',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      brokerService.getAll().then((b) => setBrokers(b || [])).catch(() => {});
+      employeeService.getAll().then((e) => setEmployees(e || [])).catch(() => {});
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (distributor) {
@@ -44,6 +59,9 @@ export const AddDistributorModal = ({
         target: distributor.target !== undefined ? distributor.target : 80,
         phone: distributor.phone || '',
         gstin: distributor.gstin || '',
+        reference_type: distributor.reference_type || 'company',
+        reference_id: distributor.reference_id || '',
+        reference_name: distributor.reference_name || (distributor.reference_type === 'company' ? 'Company Own' : ''),
         sameBilling: !distributor.billing || distributor.billing === `${distributor.area}, ${distributor.city}`,
         billing: distributor.billing || '',
       });
@@ -56,6 +74,9 @@ export const AddDistributorModal = ({
         target: 80,
         phone: '',
         gstin: '',
+        reference_type: 'company',
+        reference_id: '',
+        reference_name: 'Company Own',
         sameBilling: true,
         billing: '',
       });
@@ -120,6 +141,12 @@ export const AddDistributorModal = ({
       phone: formData.phone.trim(),
       gstin: formData.gstin.trim(),
       billing: billingText,
+      reference_type: formData.reference_type,
+      reference_id: formData.reference_id || null,
+      reference_name:
+        formData.reference_type === 'company'
+          ? 'Company Own'
+          : formData.reference_name || (formData.reference_type === 'broker' ? 'Broker Ref' : 'Employee Ref'),
     };
 
     try {
@@ -291,6 +318,100 @@ export const AddDistributorModal = ({
             </span>
           </div>
         ) : null}
+
+        {/* Reference By (Company Own / Broker / Employee) & Dynamic Secondary Selector */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: formData.reference_type === 'company' ? '1fr' : '1fr 1fr',
+            gap: '14px',
+            marginTop: '14px',
+          }}
+        >
+          <div className="f-group">
+            <label>Reference By *</label>
+            <select
+              value={formData.reference_type}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  reference_type: val,
+                  reference_id: '',
+                  reference_name: val === 'company' ? 'Company Own' : '',
+                }));
+              }}
+            >
+              <option value="company">Company Own</option>
+              <option value="broker">Broker</option>
+              <option value="employee">Employee</option>
+            </select>
+          </div>
+
+          {formData.reference_type === 'broker' && (
+            <div className="f-group">
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Select Broker *</span>
+                {brokers.length > 0 && (
+                  <span style={{ fontSize: '10.5px', color: 'var(--wheat)', fontWeight: 600 }}>
+                    {brokers.length} available
+                  </span>
+                )}
+              </label>
+              <select
+                required
+                value={formData.reference_id}
+                onChange={(e) => {
+                  const sel = brokers.find((b) => String(b.id) === String(e.target.value));
+                  setFormData((prev) => ({
+                    ...prev,
+                    reference_id: e.target.value,
+                    reference_name: sel?.name || '',
+                  }));
+                }}
+              >
+                <option value="">-- Choose Broker --</option>
+                {brokers.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} {b.phone ? `(${b.phone})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {formData.reference_type === 'employee' && (
+            <div className="f-group">
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Select Employee *</span>
+                {employees.length > 0 && (
+                  <span style={{ fontSize: '10.5px', color: 'var(--wheat)', fontWeight: 600 }}>
+                    {employees.length} available
+                  </span>
+                )}
+              </label>
+              <select
+                required
+                value={formData.reference_id}
+                onChange={(e) => {
+                  const sel = employees.find((emp) => String(emp.id) === String(e.target.value));
+                  setFormData((prev) => ({
+                    ...prev,
+                    reference_id: e.target.value,
+                    reference_name: sel?.name || '',
+                  }));
+                }}
+              >
+                <option value="">-- Choose Employee --</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} {emp.phone ? `(${emp.phone})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         {/* Target & Contact */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '14px' }}>

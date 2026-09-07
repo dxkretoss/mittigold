@@ -55,11 +55,30 @@ export const DistributorsTable = ({
                           <div className="nm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span>{d.name}</span>
                           </div>
-                          {d.phone && (
-                            <div style={{ fontSize: '11.5px', color: 'var(--ink-faint)', marginTop: '2px' }}>
-                              {d.phone}
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                            {d.phone && (
+                              <div style={{ fontSize: '11.5px', color: 'var(--ink-faint)' }}>
+                                {d.phone}
+                              </div>
+                            )}
+                            {d.reference_type && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: d.reference_type === 'broker' ? 'var(--amber-bg)' : d.reference_type === 'employee' ? 'var(--green-bg)' : '#F1EFEA',
+                                  color: d.reference_type === 'broker' ? '#886214' : d.reference_type === 'employee' ? 'var(--green)' : 'var(--ink-soft)',
+                                  border: '1px solid rgba(0,0,0,0.06)',
+                                }}
+                              >
+                                {d.reference_type === 'company'
+                                  ? 'Company Direct'
+                                  : `${d.reference_type === 'broker' ? 'Broker' : 'Employee'}: ${d.reference_name || 'Ref'}`}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

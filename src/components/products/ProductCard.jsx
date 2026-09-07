@@ -147,37 +147,20 @@ export const ProductCard = ({
         />
       </div>
 
-      {/* Card Body: Compact Title, Pack & Price */}
-      <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-          <div>
-            <h4
-              style={{
-                margin: 0,
-                fontSize: '14.5px',
-                fontWeight: 700,
-                color: 'var(--navy)',
-                lineHeight: 1.25,
-              }}
-            >
-              {product.name}
-            </h4>
-            <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '2px' }}>
-              Standard Pack: {product.pack}
-            </div>
-          </div>
-
-          <div
-            className="mono"
+      {/* Card Body: Product Name */}
+      <div style={{ padding: '14px 14px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <h4
             style={{
-              fontSize: '17px',
-              fontWeight: 800,
+              margin: 0,
+              fontSize: '15px',
+              fontWeight: 750,
               color: 'var(--navy)',
-              whiteSpace: 'nowrap',
+              lineHeight: 1.3,
             }}
           >
-            {product.price}
-          </div>
+            {product.name}
+          </h4>
         </div>
 
         {/* Card Footer Actions */}
@@ -186,7 +169,7 @@ export const ProductCard = ({
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '8px',
-            marginTop: '12px',
+            marginTop: '14px',
             paddingTop: '10px',
             borderTop: '1px solid var(--line)',
           }}
@@ -205,7 +188,7 @@ export const ProductCard = ({
               gap: '5px',
               borderRadius: '6px',
             }}
-            title="Edit SKU and Pricing"
+            title="Edit SKU Details"
           >
             <Edit2 className="w-3.5 h-3.5 text-wheat" />
             <span>Edit</span>

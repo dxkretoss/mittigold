@@ -10,7 +10,7 @@ function getLocalDistributors() {
     const stored = localStorage.getItem(DISTRIBUTORS_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch (_) {}
-  return [...initialDistributors];
+  return [];
 }
 
 function saveLocalDistributors(distributors) {
@@ -35,40 +35,23 @@ function saveLocalPayments(payments) {
 
 export const distributorService = {
   /**
-   * Fetch all distributors from Supabase (with localStorage fallback)
+   * Fetch all distributors from Supabase
    */
   async getAll() {
-    const local = getLocalDistributors();
     try {
       const { data, error } = await supabase
         .from('distributors')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && !error && data.length > 0) {
-        const remoteIds = new Set(data.map(d => d.id));
-        const localOnly = local.filter(l => l.id && !remoteIds.has(l.id));
-        const merged = [
-          ...data.map((remote) => {
-            const matchedLocal = local.find((l) => l.id === remote.id);
-            return {
-              ...remote,
-              payment_proof: remote.payment_proof || matchedLocal?.payment_proof || null,
-              payment_date: remote.payment_date || matchedLocal?.payment_date || null,
-              payment_mode: remote.payment_mode || matchedLocal?.payment_mode || 'UPI / QR',
-              payment_ref: remote.payment_ref || matchedLocal?.payment_ref || null,
-              payment_notes: remote.payment_notes || matchedLocal?.payment_notes || null,
-            };
-          }),
-          ...localOnly
-        ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-        saveLocalDistributors(merged);
-        return merged;
+      if (!error && data) {
+        saveLocalDistributors(data);
+        return data;
       }
     } catch (err) {
-      console.warn('Supabase distributors query error, falling back to local:', err);
+      console.warn('Supabase distributors query error:', err);
     }
-    return local.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    return getLocalDistributors();
   },
 
   /**
@@ -97,6 +80,9 @@ export const distributorService = {
       phone: distributorData.phone || '',
       gstin: distributorData.gstin || '',
       billing: distributorData.billing || '',
+      reference_type: distributorData.reference_type || 'company',
+      reference_id: distributorData.reference_id || null,
+      reference_name: distributorData.reference_name || 'Company Own',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -143,6 +129,9 @@ export const distributorService = {
       phone: distributorData.phone !== undefined ? distributorData.phone : undefined,
       gstin: distributorData.gstin !== undefined ? distributorData.gstin : undefined,
       billing: distributorData.billing !== undefined ? distributorData.billing : undefined,
+      reference_type: distributorData.reference_type !== undefined ? distributorData.reference_type : undefined,
+      reference_id: distributorData.reference_id !== undefined ? distributorData.reference_id : undefined,
+      reference_name: distributorData.reference_name !== undefined ? distributorData.reference_name : undefined,
       payment_proof: distributorData.payment_proof !== undefined ? distributorData.payment_proof : undefined,
       payment_date: distributorData.payment_date !== undefined ? distributorData.payment_date : undefined,
       payment_mode: distributorData.payment_mode !== undefined ? distributorData.payment_mode : undefined,
@@ -161,7 +150,7 @@ export const distributorService = {
         .eq('id', id)
         .select();
 
-      // Graceful fallback if payment_proof/payment_date/payment_ref/payment_notes/payment_mode columns not in Supabase schema cache
+      // Graceful fallback if any columns not in remote Supabase table schema cache
       if (
         error &&
         (error.code === 'PGRST204' ||
@@ -169,13 +158,16 @@ export const distributorService = {
           error.message?.toLowerCase().includes('column') ||
           error.message?.toLowerCase().includes('schema cache'))
       ) {
-        console.warn('Payment proof columns not in remote Supabase table schema cache. Saving proof locally and updating basic fields in Supabase:', error.message);
+        console.warn('Columns not in remote Supabase table schema cache. Saving locally and updating basic fields in Supabase:', error.message);
         const fallbackPayload = { ...payload };
         delete fallbackPayload.payment_proof;
         delete fallbackPayload.payment_date;
         delete fallbackPayload.payment_mode;
         delete fallbackPayload.payment_ref;
         delete fallbackPayload.payment_notes;
+        delete fallbackPayload.reference_type;
+        delete fallbackPayload.reference_id;
+        delete fallbackPayload.reference_name;
 
         try {
           const retry = await supabase

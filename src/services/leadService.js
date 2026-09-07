@@ -9,7 +9,7 @@ function getLocalLeads() {
     const stored = localStorage.getItem(LEADS_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch (_) {}
-  return [...initialLeads];
+  return [];
 }
 
 function saveLocalLeads(leads) {
@@ -35,12 +35,14 @@ export const leadService = {
 
       const { data, error } = await query;
 
-      if (data && !error && data.length > 0) {
-        saveLocalLeads(data);
+      if (!error && data) {
+        if (filter === 'all') {
+          saveLocalLeads(data);
+        }
         return data;
       }
     } catch (err) {
-      console.warn('Failed to load leads from Supabase, using local fallback:', err);
+      console.warn('Failed to load leads from Supabase:', err);
     }
 
     const local = getLocalLeads();

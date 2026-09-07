@@ -239,6 +239,9 @@ CREATE TABLE IF NOT EXISTS public.distributors (
     phone TEXT,
     gstin TEXT,
     billing TEXT,
+    reference_type TEXT DEFAULT 'company',
+    reference_id TEXT,
+    reference_name TEXT DEFAULT 'Company Own',
     payment_proof TEXT,
     payment_date TEXT,
     payment_mode TEXT DEFAULT 'UPI / QR',
@@ -249,6 +252,9 @@ CREATE TABLE IF NOT EXISTS public.distributors (
 );
 
 -- Migration for existing installations:
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS reference_type TEXT DEFAULT 'company';
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS reference_id TEXT;
+ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS reference_name TEXT DEFAULT 'Company Own';
 ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_proof TEXT;
 ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_date TEXT;
 ALTER TABLE public.distributors ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT 'UPI / QR';
@@ -270,14 +276,14 @@ DROP POLICY IF EXISTS "Allow anon delete distributors" ON public.distributors;
 CREATE POLICY "Allow anon delete distributors" ON public.distributors FOR DELETE TO anon, authenticated USING (true);
 
 -- Seed Initial Distributors
-INSERT INTO public.distributors (id, name, zone, city, area, target, outstanding, pay, gstin, billing)
+INSERT INTO public.distributors (id, name, zone, city, area, target, outstanding, pay, gstin, billing, reference_type, reference_name)
 VALUES 
-    ('dist-1', 'Ramesh Trading Co.', 'South Gujarat', 'Surat', 'Adajan', 92, '₹45,200', 'unpaid', '24ABCPT4567F1Z2', '12, Adajan Patiya, Ring Road, Surat, Gujarat 395009'),
-    ('dist-2', 'Shree Umiya Traders', 'Central Gujarat', 'Ahmedabad', 'Bopal', 105, '₹0', 'paid', '24AAEPU9081C1ZH', 'Shop 4, Bopal Cross Road, Ahmedabad, Gujarat 380058'),
-    ('dist-3', 'Patel Distributors', 'North Gujarat', 'Mehsana', 'Highway Rd', 78, '₹12,000', 'unpaid', '24AAFPP2233D1Z9', 'Highway Road, Near Bus Stand, Mehsana, Gujarat 384002'),
-    ('dist-4', 'Saurashtra Foods', 'Saurashtra', 'Rajkot', 'Kalawad Rd', 61, '₹28,500', 'unpaid', '24AAGPS5566E1Z4', 'Kalawad Road, Rajkot, Gujarat 360005'),
-    ('dist-5', 'Anand Agro Supplies', 'Central Gujarat', 'Anand', 'Vidyanagar', 88, '₹6,400', 'paid', '24AAHPA7788G1Z1', 'Vidyanagar Char Rasta, Anand, Gujarat 388120'),
-    ('dist-6', 'Navsari Wholesale', 'South Gujarat', 'Navsari', 'Station Rd', 70, '₹19,100', 'unpaid', '24AAJPN3344H1Z6', 'Station Road, Near Railway Crossing, Navsari, Gujarat 396445')
+    ('dist-1', 'Ramesh Trading Co.', 'South Gujarat', 'Surat', 'Adajan', 92, '₹45,200', 'unpaid', '24ABCPT4567F1Z2', '12, Adajan Patiya, Ring Road, Surat, Gujarat 395009', 'broker', 'J. Mehta Associates'),
+    ('dist-2', 'Shree Umiya Traders', 'Central Gujarat', 'Ahmedabad', 'Bopal', 105, '₹0', 'paid', '24AAEPU9081C1ZH', 'Shop 4, Bopal Cross Road, Ahmedabad, Gujarat 380058', 'company', 'Company Own'),
+    ('dist-3', 'Patel Distributors', 'North Gujarat', 'Mehsana', 'Highway Rd', 78, '₹12,000', 'unpaid', '24AAFPP2233D1Z9', 'Highway Road, Near Bus Stand, Mehsana, Gujarat 384002', 'broker', 'Solanki Agency'),
+    ('dist-4', 'Saurashtra Foods', 'Saurashtra', 'Rajkot', 'Kalawad Rd', 61, '₹28,500', 'unpaid', '24AAGPS5566E1Z4', 'Kalawad Road, Rajkot, Gujarat 360005', 'company', 'Company Own'),
+    ('dist-5', 'Anand Agro Supplies', 'Central Gujarat', 'Anand', 'Vidyanagar', 88, '₹6,400', 'paid', '24AAHPA7788G1Z1', 'Vidyanagar Char Rasta, Anand, Gujarat 388120', 'employee', 'Vikram Patel'),
+    ('dist-6', 'Navsari Wholesale', 'South Gujarat', 'Navsari', 'Station Rd', 70, '₹19,100', 'unpaid', '24AAJPN3344H1Z6', 'Station Road, Near Railway Crossing, Navsari, Gujarat 396445', 'broker', 'J. Mehta Associates')
 ON CONFLICT (id) DO NOTHING;
 
 -- ------------------------------------------------------------------------------
@@ -435,7 +441,109 @@ INSERT INTO public.notifications (id, type, title, message, link, read, created_
 ('notif-5', 'lead', 'Lead Converted', 'Ganesh Provision moved to Convert stage.', '/leads', true, now() - INTERVAL '2 days')
 ON CONFLICT (id) DO NOTHING;
 
+-- ------------------------------------------------------------------------------
+-- 10. ORDERS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.orders (
+    id TEXT PRIMARY KEY,
+    dist TEXT NOT NULL,
+    zone TEXT,
+    items JSONB DEFAULT '[]'::jsonb,
+    total TEXT,
+    qty TEXT,
+    original_qty TEXT,
+    original_items JSONB,
+    eta TEXT,
+    transport TEXT DEFAULT '—',
+    amt NUMERIC,
+    order_value TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'dispatched', 'delivered', 'cancelled')),
+    date TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Migrations for existing installations:
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS eta TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS transport TEXT DEFAULT '—';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS zone TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS amt NUMERIC;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_value TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS date TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS original_qty TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS original_items JSONB;
+
+-- Relax any strict legacy NOT NULL constraints on orders columns
+ALTER TABLE public.orders ALTER COLUMN date DROP NOT NULL;
+ALTER TABLE public.orders ALTER COLUMN zone DROP NOT NULL;
+ALTER TABLE public.orders ALTER COLUMN eta DROP NOT NULL;
+ALTER TABLE public.orders ALTER COLUMN transport DROP NOT NULL;
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read orders" ON public.orders;
+CREATE POLICY "Allow anon read orders" ON public.orders FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert orders" ON public.orders;
+CREATE POLICY "Allow anon insert orders" ON public.orders FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update orders" ON public.orders;
+CREATE POLICY "Allow anon update orders" ON public.orders FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete orders" ON public.orders;
+CREATE POLICY "Allow anon delete orders" ON public.orders FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Orders
+INSERT INTO public.orders (id, dist, zone, items, total, qty, status, date) VALUES
+('MG-2026-0232', 'Navsari Wholesale', 'South Gujarat', '[{"name":"Chakki Fresh Atta","pack":"30 kg","qty":30,"price":1340,"amount":40200},{"name":"Maida","pack":"30 kg","qty":20,"price":1100,"amount":22000}]'::jsonb, '₹62,200', '50 bags', 'pending', '03 Aug 2026'),
+('MG-2026-0231', 'Ramesh Trading Co.', 'South Gujarat', '[{"name":"Chakki Fresh Atta","pack":"30 kg","qty":40,"price":1300,"amount":52000},{"name":"Maida","pack":"30 kg","qty":15,"price":1100,"amount":16500}]'::jsonb, '₹68,500', '55 bags', 'approved', '01 Aug 2026'),
+('MG-2026-0230', 'Shree Umiya Traders', 'Central Gujarat', '[{"name":"Bhakhri Atta","pack":"30 kg","qty":22,"price":1420,"amount":31240}]'::jsonb, '₹31,240', '22 bags', 'dispatched', '29 Jul 2026'),
+('MG-2026-0229', 'Patel Distributors', 'North Gujarat', '[{"name":"Maida","pack":"30 kg","qty":18,"price":1100,"amount":19800}]'::jsonb, '₹19,800', '18 bags', 'delivered', '27 Jul 2026')
+ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 11. EMPLOYEES / SALES ROSTER TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.employees (
+    id TEXT PRIMARY KEY DEFAULT ('emp-' || gen_random_uuid()),
+    name TEXT NOT NULL,
+    role TEXT DEFAULT 'Field Sales Officer',
+    zone TEXT DEFAULT 'South Gujarat',
+    city TEXT DEFAULT '',
+    phone TEXT NOT NULL,
+    email TEXT DEFAULT '',
+    target_bags NUMERIC DEFAULT 500000,
+    achieved_bags NUMERIC DEFAULT 0,
+    leads_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'on_leave', 'inactive')),
+    joined_date TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read employees" ON public.employees;
+CREATE POLICY "Allow anon read employees" ON public.employees FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert employees" ON public.employees;
+CREATE POLICY "Allow anon insert employees" ON public.employees FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon update employees" ON public.employees;
+CREATE POLICY "Allow anon update employees" ON public.employees FOR UPDATE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anon delete employees" ON public.employees;
+CREATE POLICY "Allow anon delete employees" ON public.employees FOR DELETE TO anon, authenticated USING (true);
+
+-- Seed Initial Employee
+INSERT INTO public.employees (id, name, role, zone, city, phone, email, target_bags, achieved_bags, leads_count, status, joined_date) VALUES
+('emp-1', 'Ramesh Joshi', 'Field Sales Officer', 'South Gujarat', 'Surat', '+91 98250 44101', 'ramesh@farmflowfoods.in', 500000, 240000, 12, 'active', '01 Jan 2026')
+ON CONFLICT (id) DO NOTHING;
+
 -- Verification
-SELECT * FROM public.notifications ORDER BY created_at DESC;
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+
 
 

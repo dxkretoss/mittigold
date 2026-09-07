@@ -12,6 +12,7 @@ import { Distributors } from '../pages/distributors/Distributors';
 import { DistributorDetail } from '../pages/distributors/DistributorDetail';
 import { Brokers } from '../pages/brokers/Brokers';
 import { BrokerDetail } from '../pages/brokers/BrokerDetail';
+import { SalesTeam } from '../pages/sales/SalesTeam';
 import { Orders } from '../pages/orders/Orders';
 import { Invoices } from '../pages/invoices/Invoices';
 import { Products } from '../pages/products/Products';
@@ -42,6 +43,8 @@ export const AppRoutes = () => {
         <Route path="distributors/:id" element={<DistributorDetail />} />
         <Route path="brokers" element={<Brokers />} />
         <Route path="brokers/:id" element={<BrokerDetail />} />
+        <Route path="sales-team" element={<SalesTeam />} />
+        <Route path="employees" element={<Navigate to="/sales-team" replace />} />
         <Route path="orders" element={<Orders />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="products" element={<Products />} />

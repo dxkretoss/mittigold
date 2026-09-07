@@ -32,6 +32,7 @@ export const NAV_ITEMS = [
       { key: "leads", label: "Leads", path: "/leads", icon: "Users" },
       { key: "distributors", label: "Distributors", path: "/distributors", icon: "Building2" },
       { key: "brokers", label: "Brokers", path: "/brokers", icon: "UserCheck" },
+      { key: "salesmen", label: "Employee / Sales", path: "/sales-team", icon: "UserCog" },
     ]
   },
   {
@@ -56,6 +57,7 @@ export const PAGE_TITLES = {
   "/leads": { title: "Leads", sub: "New → Follow-up → Convert → Close" },
   "/distributors": { title: "Distributors", sub: "Target, outstanding & zone assignment" },
   "/brokers": { title: "Brokers", sub: "Commission & performance" },
+  "/sales-team": { title: "Employee / Sales", sub: "Field sales team, zone assignments & monthly targets" },
   "/orders": { title: "Orders", sub: "Admin / Plant Manager queue" },
   "/invoices": { title: "Invoices", sub: "Create + download / share" },
   "/products": { title: "Products", sub: "9 SKUs across 5 product lines" },

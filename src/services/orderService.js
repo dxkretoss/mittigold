@@ -19,6 +19,146 @@ function saveLocalOrders(orders) {
 }
 
 /**
+ * Helper to credit sales amount to Employee or Commission to Broker
+ * based on distributor's reference_type
+ */
+async function creditOrderReference(orderData, previousAmt = 0) {
+  const currentAmt = parseFloat(String(orderData.amt || orderData.total || orderData.order_value || '0').replace(/[^0-9.]/g, '')) || 0;
+  const deltaAmt = currentAmt - previousAmt;
+  if (deltaAmt === 0 && previousAmt > 0) return;
+
+  const distName = (orderData.dist || '').trim().toLowerCase();
+  const distId = String(orderData.dist_id || '').toLowerCase();
+
+  try {
+    // 1. Fetch distributors to find the reference
+    let distObj = null;
+    try {
+      const { data: dists } = await supabase.from('distributors').select('*');
+      if (dists && dists.length > 0) {
+        distObj = dists.find((d) => 
+          (distId && String(d.id).toLowerCase() === distId) ||
+          (d.name && d.name.trim().toLowerCase() === distName)
+        );
+      }
+    } catch (_) {}
+
+    if (!distObj) {
+      try {
+        const localDists = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+        distObj = localDists.find((d) => 
+          (distId && String(d.id).toLowerCase() === distId) ||
+          (d.name && d.name.trim().toLowerCase() === distName)
+        );
+      } catch (_) {}
+    }
+
+    if (!distObj || !distObj.reference_type) return;
+
+    const refType = String(distObj.reference_type).toLowerCase().trim();
+    const refId = String(distObj.reference_id || '').toLowerCase().trim();
+    const refName = String(distObj.reference_name || '').toLowerCase().trim();
+
+    // CASE A: Reference is Employee -> Add order value to employee achieved sales
+    if (refType === 'employee') {
+      let employees = [];
+      try {
+        const { data } = await supabase.from('employees').select('*');
+        if (data) employees = data;
+      } catch (_) {}
+      if (!employees.length) {
+        try {
+          employees = JSON.parse(localStorage.getItem('mittigold_employees_data') || '[]');
+        } catch (_) {}
+      }
+
+      const targetEmp = employees.find((e) => 
+        (refId && String(e.id).toLowerCase() === refId) ||
+        (refName && e.name && e.name.trim().toLowerCase() === refName)
+      );
+
+      if (targetEmp) {
+        const currentAchieved = parseInt(String(targetEmp.achieved_bags || 0).replace(/[^0-9.]/g, ''), 10) || 0;
+        const newAchieved = Math.max(0, currentAchieved + Math.round(deltaAmt > 0 ? deltaAmt : currentAmt));
+
+        try {
+          await supabase.from('employees').update({
+            achieved_bags: newAchieved,
+            updated_at: new Date().toISOString()
+          }).eq('id', targetEmp.id);
+        } catch (_) {}
+
+        try {
+          const local = JSON.parse(localStorage.getItem('mittigold_employees_data') || '[]');
+          const updated = local.map((e) => e.id === targetEmp.id ? { ...e, achieved_bags: newAchieved } : e);
+          localStorage.setItem('mittigold_employees_data', JSON.stringify(updated));
+        } catch (_) {}
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mittigold-employee-updated'));
+        }
+      }
+    }
+
+    // CASE B: Reference is Broker -> Add calculated commission based on broker's rate %
+    else if (refType === 'broker') {
+      let brokers = [];
+      try {
+        const { data } = await supabase.from('brokers').select('*');
+        if (data) brokers = data;
+      } catch (_) {}
+      if (!brokers.length) {
+        try {
+          brokers = JSON.parse(localStorage.getItem('mittigold_brokers_data') || '[]');
+        } catch (_) {}
+      }
+
+      const targetBroker = brokers.find((b) => 
+        (refId && String(b.id).toLowerCase() === refId) ||
+        (refName && b.name && b.name.trim().toLowerCase() === refName)
+      );
+
+      if (targetBroker) {
+        const rate = Number(targetBroker.rate) || 5;
+        const effectiveOrderAmt = deltaAmt > 0 ? deltaAmt : currentAmt;
+        const commAmt = Math.round(effectiveOrderAmt * (rate / 100));
+
+        const curComm = parseFloat(String(targetBroker.commission || '0').replace(/[^0-9.]/g, '')) || 0;
+        const curPending = parseFloat(String(targetBroker.pending || '0').replace(/[^0-9.]/g, '')) || 0;
+        const curOrders = parseInt(targetBroker.orders, 10) || 0;
+
+        const newComm = curComm + commAmt;
+        const newPending = curPending + commAmt;
+        const newOrders = previousAmt > 0 ? curOrders : curOrders + 1;
+
+        const updatePayload = {
+          commission: `₹${newComm.toLocaleString('en-IN')}`,
+          pending: `₹${newPending.toLocaleString('en-IN')}`,
+          orders: newOrders,
+          updated_at: new Date().toISOString()
+        };
+
+        try {
+          await supabase.from('brokers').update(updatePayload).eq('id', targetBroker.id);
+        } catch (_) {}
+
+        try {
+          const local = JSON.parse(localStorage.getItem('mittigold_brokers_data') || '[]');
+          const updated = local.map((b) => b.id === targetBroker.id ? { ...b, ...updatePayload } : b);
+          localStorage.setItem('mittigold_brokers_data', JSON.stringify(updated));
+        } catch (_) {}
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mittigold-broker-updated'));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error updating distributor reference commissions/achievements:', err);
+  }
+}
+
+/**
  * Custom Service Functions for Orders
  * 100% Dynamic Supabase queries with robust local synchronization
  */
@@ -27,7 +167,6 @@ export const orderService = {
    * Fetch all orders with optional status filter from Supabase (with local fallback and merge)
    */
   async getAll(filter = 'all') {
-    const local = getLocalOrders();
     try {
       let query = supabase
         .from('orders')
@@ -40,38 +179,20 @@ export const orderService = {
 
       const { data, error } = await query;
       if (!error && data) {
-        const remoteIds = new Set(data.map((r) => r.id));
-        const localOnly = local.filter((l) => l.id && !remoteIds.has(l.id));
-        const merged = [
-          ...data.map((remote) => {
-            const matched = local.find((l) => l.id === remote.id);
-            return {
-              ...remote,
-              items: remote.items || matched?.items || null,
-              original_qty: remote.original_qty || matched?.original_qty || null,
-              original_items: remote.original_items || matched?.original_items || null,
-            };
-          }),
-          ...localOnly
-        ].sort(
-          (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || String(b.id).localeCompare(String(a.id))
-        );
         if (filter === 'all') {
-          saveLocalOrders(merged);
+          saveLocalOrders(data);
         }
-        return filter && filter !== 'all' ? merged.filter((o) => o.status === filter) : merged;
+        return data;
       }
     } catch (err) {
-      console.warn('Supabase orders query error, falling back to local:', err);
+      console.warn('Supabase orders query error:', err);
     }
 
-    const sortedLocal = [...local].sort(
-      (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || String(b.id).localeCompare(String(a.id))
-    );
+    const local = getLocalOrders();
     if (filter && filter !== 'all') {
-      return sortedLocal.filter((o) => o.status === filter);
+      return local.filter((o) => o.status === filter);
     }
-    return sortedLocal;
+    return local;
   },
 
   /**
@@ -157,12 +278,29 @@ export const orderService = {
   async add(orderData) {
     const nextId = orderData.id || await this.getNextId();
     
+    // Auto-detect zone from orderData or distributor
+    let zone = orderData.zone;
+    if (!zone && orderData.dist) {
+      try {
+        const localDists = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+        const found = localDists.find((d) => d.name === orderData.dist || d.id === orderData.dist);
+        if (found?.zone) zone = found.zone;
+      } catch (_) {}
+    }
+    if (!zone) zone = 'South Gujarat';
+
+    const orderDate = orderData.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const orderTotal = orderData.total || orderData.order_value || (orderData.amt ? `₹${Number(orderData.amt).toLocaleString('en-IN')}` : '₹0');
+
     // Exact columns present in Supabase orders table schema
     const dbPayload = {
       id: nextId,
       dist: orderData.dist,
+      zone: zone,
+      date: orderDate,
       qty: orderData.qty,
-      eta: orderData.eta,
+      total: orderTotal,
+      eta: orderData.eta || '—',
       transport: orderData.transport || '—',
       status: orderData.status || 'pending',
       created_at: new Date().toISOString(),
@@ -174,6 +312,8 @@ export const orderService = {
       items: orderData.items || null,
       original_qty: orderData.original_qty || orderData.qty,
       original_items: orderData.original_items || orderData.items || null,
+      amt: orderData.amt !== undefined ? orderData.amt : null,
+      order_value: orderTotal,
     };
 
     try {
@@ -189,8 +329,14 @@ export const orderService = {
           items: orderData.items || null,
           original_qty: orderData.original_qty || orderData.qty,
           original_items: orderData.original_items || orderData.items || null,
+          amt: orderData.amt !== undefined ? orderData.amt : null,
+          order_value: orderTotal,
         };
         saveLocalOrders([savedItem, ...local.filter(o => o.id !== data[0].id)]);
+        
+        // Auto-credit distributor reference (Employee achievement or Broker commission)
+        await creditOrderReference(orderData, 0);
+
         this.notify();
         return savedItem;
       }
@@ -204,6 +350,10 @@ export const orderService = {
     const local = getLocalOrders();
     const updated = [fullOrder, ...local.filter(o => o.id !== nextId)];
     saveLocalOrders(updated);
+
+    // Auto-credit distributor reference locally
+    await creditOrderReference(orderData, 0);
+
     this.notify();
 
     try {
@@ -259,9 +409,26 @@ export const orderService = {
     const original_qty = orderData.original_qty || existing?.original_qty || (existing?.qty && orderData.qty !== existing.qty ? existing.qty : null);
     const original_items = orderData.original_items || existing?.original_items || (existing?.items && orderData.items !== existing.items ? existing.items : null);
 
+    // Auto-detect zone
+    let zone = orderData.zone || existing?.zone;
+    if (!zone && orderData.dist) {
+      try {
+        const localDists = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+        const found = localDists.find((d) => d.name === orderData.dist || d.id === orderData.dist);
+        if (found?.zone) zone = found.zone;
+      } catch (_) {}
+    }
+    if (!zone) zone = 'South Gujarat';
+
+    const orderDate = orderData.date || existing?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const orderTotal = orderData.total || orderData.order_value || existing?.total || existing?.order_value || (orderData.amt ? `₹${Number(orderData.amt).toLocaleString('en-IN')}` : '₹0');
+
     // Only send valid columns in Supabase orders table
     const dbPayload = {
       dist: orderData.dist,
+      zone: zone,
+      date: orderDate,
+      total: orderTotal,
       qty: orderData.qty,
       eta: orderData.eta,
       transport: orderData.transport || '—',
@@ -283,8 +450,14 @@ export const orderService = {
           items: orderData.items !== undefined ? orderData.items : existing?.items,
           original_qty,
           original_items,
+          amt: orderData.amt !== undefined ? orderData.amt : existing?.amt,
+          order_value: orderData.order_value || (orderData.amt ? `₹${orderData.amt.toLocaleString('en-IN')}` : existing?.order_value),
         };
         saveLocalOrders([savedItem, ...local.filter(o => o.id !== data[0].id)]);
+        
+        const prevAmt = existing?.amt || parseFloat(String(existing?.total || existing?.order_value || '0').replace(/[^0-9.]/g, '')) || 0;
+        await creditOrderReference(orderData, prevAmt);
+
         this.notify();
         return savedItem;
       }
@@ -298,8 +471,14 @@ export const orderService = {
       items: orderData.items !== undefined ? orderData.items : existing?.items,
       original_qty,
       original_items,
+      amt: orderData.amt !== undefined ? orderData.amt : existing?.amt,
+      order_value: orderData.order_value || (orderData.amt ? `₹${orderData.amt.toLocaleString('en-IN')}` : existing?.order_value),
     };
     saveLocalOrders([savedFallback, ...local.filter(o => o.id !== orderId)]);
+    
+    const prevAmt = existing?.amt || parseFloat(String(existing?.total || existing?.order_value || '0').replace(/[^0-9.]/g, '')) || 0;
+    await creditOrderReference(orderData, prevAmt);
+
     this.notify();
     return savedFallback;
   },

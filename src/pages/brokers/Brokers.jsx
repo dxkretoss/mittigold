@@ -37,6 +37,22 @@ export const Brokers = () => {
 
   useEffect(() => {
     loadBrokers();
+
+    const handleRefresh = () => {
+      loadBrokers();
+    };
+
+    window.addEventListener('mittigold-broker-updated', handleRefresh);
+    window.addEventListener('mittigold-broker-created', handleRefresh);
+    window.addEventListener('mittigold-order-created', handleRefresh);
+    window.addEventListener('mittigold-order-updated', handleRefresh);
+
+    return () => {
+      window.removeEventListener('mittigold-broker-updated', handleRefresh);
+      window.removeEventListener('mittigold-broker-created', handleRefresh);
+      window.removeEventListener('mittigold-order-created', handleRefresh);
+      window.removeEventListener('mittigold-order-updated', handleRefresh);
+    };
   }, []);
 
   const handleOpenAdd = () => {

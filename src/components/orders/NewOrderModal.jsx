@@ -21,8 +21,21 @@ function convertDateToInput(dateStr) {
   return '';
 }
 
+function getProductDefaultRate(p) {
+  if (!p) return 1200;
+  if (p.price) {
+    const num = parseFloat(String(p.price).replace(/[^0-9.]/g, ''));
+    if (!isNaN(num) && num > 0) return num;
+  }
+  const catRate = parseItemPrice(p.name, p.pack);
+  return catRate > 0 ? catRate : 1200;
+}
+
 function parseOrderLines(order, products = []) {
-  if (!order) return [{ productIndex: 0, qty: 10 }];
+  if (!order) {
+    const defaultRate = products.length > 0 ? getProductDefaultRate(products[0]) : 1200;
+    return [{ productIndex: 0, qty: 10, price: defaultRate > 0 ? defaultRate : 1200 }];
+  }
 
   // 1. If order already has structured items array
   if (Array.isArray(order.items) && order.items.length > 0) {
@@ -38,8 +51,16 @@ function parseOrderLines(order, products = []) {
           pIdx = products.findIndex((p) => item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
         }
       }
+      const validPIdx = pIdx >= 0 ? pIdx : 0;
       const qtyNum = parseInt(String(item.qty).replace(/\D/g, ''), 10) || 10;
-      return { productIndex: pIdx >= 0 ? pIdx : 0, qty: qtyNum };
+      const itemPrice = item.price != null && !isNaN(Number(item.price)) && Number(item.price) > 0 
+        ? Number(item.price) 
+        : getProductDefaultRate(products[validPIdx]);
+      return { 
+        productIndex: validPIdx, 
+        qty: qtyNum > 0 ? qtyNum : 10, 
+        price: itemPrice > 0 ? itemPrice : 1200 
+      };
     });
   }
 
@@ -66,9 +87,13 @@ function parseOrderLines(order, products = []) {
         }
       }
 
+      const p = products[bestPIdx];
+      const defaultPrice = getProductDefaultRate(p);
+
       return {
         productIndex: bestPIdx,
-        qty: qty || 10,
+        qty: qty > 0 ? qty : 10,
+        price: defaultPrice > 0 ? defaultPrice : 1200,
       };
     });
 
@@ -77,7 +102,8 @@ function parseOrderLines(order, products = []) {
     }
   }
 
-  return [{ productIndex: 0, qty: 10 }];
+  const firstRate = products.length > 0 ? getProductDefaultRate(products[0]) : 1200;
+  return [{ productIndex: 0, qty: 10, price: firstRate > 0 ? firstRate : 1200 }];
 }
 
 export const NewOrderModal = ({
@@ -97,7 +123,7 @@ export const NewOrderModal = ({
   const [eta, setEta] = useState('');
   const [transport, setTransport] = useState('');
   const [status, setStatus] = useState('pending');
-  const [lines, setLines] = useState([{ productIndex: 0, qty: 10 }]);
+  const [lines, setLines] = useState([{ productIndex: 0, qty: 10, price: 1200 }]);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -119,14 +145,18 @@ export const NewOrderModal = ({
           setEta(todayStr);
           setTransport('');
           setStatus('pending');
-          setLines([{ productIndex: 0, qty: 10 }]);
+          const defaultPrice = availableProds.length > 0 ? getProductDefaultRate(availableProds[0]) : 1200;
+          setLines([{ productIndex: 0, qty: 10, price: defaultPrice }]);
         }
       });
     }
   }, [isOpen, order]);
 
   const addLine = () => {
-    setLines([...lines, { productIndex: 0, qty: 10 }]);
+    const nextIdx = Math.min(lines.length, Math.max(0, products.length - 1));
+    const defaultP = products[nextIdx] || products[0];
+    const defaultRate = getProductDefaultRate(defaultP);
+    setLines([...lines, { productIndex: nextIdx >= 0 ? nextIdx : 0, qty: 10, price: defaultRate }]);
   };
 
   const removeLine = (index) => {
@@ -140,18 +170,31 @@ export const NewOrderModal = ({
     setLines(updated);
   };
 
+  const handleProductChange = (idx, newProductIdx) => {
+    const p = products[newProductIdx];
+    const defaultRate = getProductDefaultRate(p);
+    const updated = [...lines];
+    updated[idx] = {
+      ...updated[idx],
+      productIndex: newProductIdx,
+      price: defaultRate,
+    };
+    setLines(updated);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!dist || !eta || !lines.length || !products.length) return;
 
-    // Validate that all lines have non-empty, positive quantities
+    // Strict validation: qty > 0 and price > 0
     const invalidLine = lines.some((l) => {
       const q = parseInt(l.qty, 10);
-      return isNaN(q) || q <= 0;
+      const p = parseFloat(l.price);
+      return isNaN(q) || q <= 0 || isNaN(p) || p <= 0;
     });
 
     if (invalidLine) {
-      showError('Validation Error', 'Please enter a valid quantity (greater than 0) for all order items.');
+      showError('Validation Error', 'Quantity and Price per bag must be greater than 0 for all order items.');
       return;
     }
 
@@ -167,17 +210,35 @@ export const NewOrderModal = ({
       const structuredItems = lines.map((l) => {
         const p = products[l.productIndex] || products[0];
         const q = parseInt(l.qty, 10) || 1;
+        const priceNum = parseFloat(l.price) || 0;
         return {
           productIndex: l.productIndex,
           name: p.name,
           pack: p.pack,
           qty: q,
-          price: p.price ? (parseFloat(String(p.price).replace(/[^0-9.]/g, '')) || 0) : parseItemPrice(p.name, p.pack),
+          price: priceNum,
+          amount: q * priceNum,
         };
       });
 
+      const totalValNum = structuredItems.reduce((s, it) => s + (it.amount || 0), 0);
+
+      if (totalValNum <= 0) {
+        showError('Validation Error', 'Total order value must be greater than ₹0.');
+        return;
+      }
+
+      const selectedDistObj = distributors.find((d) => d.name === dist || d.id === dist);
+      const targetZone = selectedDistObj?.zone || order?.zone || 'South Gujarat';
+      const orderDate = order?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const orderTotal = `₹${totalValNum.toLocaleString('en-IN')}`;
+
       const orderPayload = {
-        dist,
+        dist: selectedDistObj?.name || dist,
+        dist_id: selectedDistObj?.id || null,
+        zone: targetZone,
+        date: orderDate,
+        total: orderTotal,
         qty: lineDescriptions.join(', '),
         original_qty: order?.original_qty || (isEditing ? (order?.qty || lineDescriptions.join(', ')) : lineDescriptions.join(', ')),
         eta: formatDateDisplay(eta),
@@ -185,6 +246,8 @@ export const NewOrderModal = ({
         status: status || 'pending',
         items: structuredItems,
         original_items: order?.original_items || (isEditing ? (order?.items || structuredItems) : structuredItems),
+        amt: totalValNum,
+        order_value: orderTotal,
       };
 
       if (isEditing) {
@@ -206,9 +269,8 @@ export const NewOrderModal = ({
   };
 
   const liveOrderTotal = lines.reduce((sum, line) => {
-    const p = products[line.productIndex] || products[0];
-    const q = parseInt(line.qty, 10) || 0;
-    const rate = p?.price ? (parseFloat(String(p.price).replace(/[^0-9.]/g, '')) || 0) : parseItemPrice(p?.name, p?.pack);
+    const q = parseFloat(line.qty) || 0;
+    const rate = parseFloat(line.price) || 0;
     return sum + q * rate;
   }, 0);
 
@@ -217,6 +279,7 @@ export const NewOrderModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isEditing ? `Edit Order (${order?.id})` : 'New Order'}
+      maxWidth="580px"
       footer={
         <>
           <button className="btn-outline" type="button" onClick={onClose} disabled={isSubmitting}>
@@ -279,16 +342,51 @@ export const NewOrderModal = ({
         </div>
 
         <div className="f-group">
-          <label>Order Items</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label style={{ margin: 0 }}>Order Items *</label>
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                fontSize: '11px',
+                color: 'var(--ink-soft)',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                paddingRight: lines.length > 1 ? '40px' : '0px',
+              }}
+            >
+              <span style={{ width: '85px', textAlign: 'center' }}>Qty (Bag)</span>
+              <span style={{ width: '115px', textAlign: 'center' }}>Price / Bag (₹)</span>
+            </div>
+          </div>
+
           <div id="orderLines">
             {lines.map((line, idx) => (
-              <div key={idx} className="lineitem">
+              <div
+                key={idx}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: lines.length > 1 ? '1fr 85px 115px 30px' : '1fr 85px 115px',
+                  gap: '10px',
+                  alignItems: 'center',
+                  marginBottom: '10px',
+                }}
+              >
                 <select
                   value={line.productIndex}
                   onChange={(e) =>
-                    updateLine(idx, 'productIndex', parseInt(e.target.value))
+                    handleProductChange(idx, parseInt(e.target.value, 10))
                   }
-                  className="li-prod"
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--line)',
+                    background: '#FBFAF7',
+                    color: 'var(--ink)',
+                    width: '100%',
+                  }}
                   disabled={isSubmitting}
                 >
                   {products.map((p, pIdx) => (
@@ -307,12 +405,59 @@ export const NewOrderModal = ({
                     const val = e.target.value;
                     updateLine(idx, 'qty', val === '' ? '' : (parseInt(val, 10) || ''));
                   }}
-                  className="li-qty"
+                  style={{
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--line)',
+                    background: '#FBFAF7',
+                    width: '100%',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                  }}
                   disabled={isSubmitting}
                   required
                 />
 
-                <span className="zoneword">bags</span>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: '8px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: 'var(--ink-soft)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    placeholder="Price"
+                    value={line.price ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateLine(idx, 'price', val);
+                    }}
+                    style={{
+                      padding: '8px 8px 8px 20px',
+                      fontSize: '13px',
+                      fontFamily: 'IBM Plex Mono, monospace',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      border: '1px solid var(--line)',
+                      background: '#FBFAF7',
+                      width: '100%',
+                      textAlign: 'right',
+                    }}
+                    disabled={isSubmitting}
+                    required
+                    title="Enter price per bag"
+                  />
+                </div>
 
                 {lines.length > 1 && (
                   <button
@@ -322,6 +467,16 @@ export const NewOrderModal = ({
                     aria-label="Remove item"
                     disabled={isSubmitting}
                     title="Remove item"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      background: 'var(--red-bg)',
+                      color: 'var(--red)',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                    }}
                   >
                     ×
                   </button>

@@ -9,7 +9,7 @@ function getLocalInvoices() {
     const stored = localStorage.getItem(INVOICES_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch (_) {}
-  return [...initialInvoices];
+  return [];
 }
 
 function saveLocalInvoices(invoices) {
@@ -20,7 +20,7 @@ function saveLocalInvoices(invoices) {
 
 export const invoiceService = {
   /**
-   * Fetch all invoices from Supabase (with localStorage fallback)
+   * Fetch all invoices from Supabase
    */
   async getAll() {
     try {
@@ -29,7 +29,7 @@ export const invoiceService = {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && !error && data.length > 0) {
+      if (!error && data) {
         const formatted = data.map((item) => ({
           id: item.id,
           dist: item.dist,
@@ -44,7 +44,7 @@ export const invoiceService = {
         return formatted;
       }
     } catch (err) {
-      console.warn('Supabase invoices query error, falling back to local:', err);
+      console.warn('Supabase invoices query error:', err);
     }
     return getLocalInvoices().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || String(b.id).localeCompare(String(a.id)));
   },

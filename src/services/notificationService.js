@@ -2,60 +2,14 @@ import { supabase } from '../lib/supabase';
 
 const NOTIFICATIONS_STORAGE_KEY = 'mittigold_notifications_data';
 
-const initialNotifications = [
-  {
-    id: 'notif-1',
-    type: 'order',
-    title: 'New Order Received',
-    message: 'Navsari Wholesale placed order MG-2026-0232 for 980 bags.',
-    link: '/orders',
-    read: false,
-    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-2',
-    type: 'lead',
-    title: 'New Lead Added',
-    message: 'Vraj Kirana Store from South Gujarat was added by R. Joshi.',
-    link: '/leads',
-    read: false,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-3',
-    type: 'payment',
-    title: 'Payment Cleared',
-    message: 'Shree Umiya Traders payment proof verified and marked as Paid.',
-    link: '/distributors',
-    read: false,
-    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-4',
-    type: 'order',
-    title: 'Order Dispatched',
-    message: 'Order MG-2026-0230 is out for delivery via Tata Ace.',
-    link: '/orders',
-    read: true,
-    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-5',
-    type: 'lead',
-    title: 'Lead Converted',
-    message: 'Ganesh Provision moved to Convert stage.',
-    link: '/leads',
-    read: true,
-    created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-  },
-];
+const initialNotifications = [];
 
 function getLocalNotifications() {
   try {
     const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch (_) {}
-  return [...initialNotifications];
+  return [];
 }
 
 function saveLocalNotifications(notifications) {

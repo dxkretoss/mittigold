@@ -41,29 +41,21 @@ export const brokerService = {
    * Fetch all brokers from Supabase database
    */
   async getAll() {
-    const local = getLocalBrokers();
     try {
       const { data, error } = await supabase
         .from('brokers')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && !error && data.length > 0) {
-        const remoteIds = new Set(data.map((b) => b.id));
-        const localOnly = local.filter((l) => l.id && !remoteIds.has(l.id));
-        const merged = [...data, ...localOnly].sort(
-          (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
-        );
-        saveLocalBrokers(merged);
-        return merged;
+      if (!error && data) {
+        saveLocalBrokers(data);
+        return data;
       }
     } catch (err) {
       console.warn('Failed to load brokers from Supabase:', err.message);
     }
 
-    return local.sort(
-      (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
-    );
+    return getLocalBrokers();
   },
 
   /**

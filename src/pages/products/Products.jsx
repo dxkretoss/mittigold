@@ -156,7 +156,7 @@ export const Products = () => {
             type="button"
             className="btn-outline"
             onClick={loadProducts}
-            title="Refresh from Database"
+            title="Refresh Products"
             style={{ padding: '8px 12px' }}
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh

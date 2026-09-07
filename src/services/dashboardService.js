@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { initialZones } from '../data/zonesData';
 import { zoneService } from './zoneService';
+import { distributorService } from './distributorService';
+import { invoiceService } from './invoiceService';
+import { orderService } from './orderService';
 
 function parseAmount(val) {
   if (typeof val === 'number') return val;
@@ -19,13 +22,13 @@ export const dashboardService = {
   async getKpis() {
     try {
       const [
-        { data: invoices },
-        { data: orders },
-        { data: distributors }
+        invoices,
+        orders,
+        distributors
       ] = await Promise.all([
-        supabase.from('invoices').select('amt, status, date'),
-        supabase.from('orders').select('status, eta'),
-        supabase.from('distributors').select('id, name, pay')
+        invoiceService.getAll(),
+        orderService.getAll('all'),
+        distributorService.getAll()
       ]);
 
       const invoiceList = invoices || [];
@@ -141,13 +144,13 @@ export const dashboardService = {
   async getBestDistributors(limit = 5) {
     try {
       const [
-        { data: distributors },
-        { data: invoices },
-        { data: orders }
+        distributors,
+        invoices,
+        orders
       ] = await Promise.all([
-        supabase.from('distributors').select('*'),
-        supabase.from('invoices').select('dist, amt'),
-        supabase.from('orders').select('dist')
+        distributorService.getAll(),
+        invoiceService.getAll(),
+        orderService.getAll('all')
       ]);
 
       if (!distributors || distributors.length === 0) return [];

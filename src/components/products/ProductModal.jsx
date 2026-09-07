@@ -16,7 +16,6 @@ export const ProductModal = ({
   const [formData, setFormData] = useState({
     name: '',
     pack: '',
-    price: '',
     image: null,
     stock_qty: '',
     stock: 80,
@@ -28,7 +27,6 @@ export const ProductModal = ({
       setFormData({
         name: product.name || '',
         pack: product.pack || '',
-        price: String(product.price || '').replace('₹', '').trim(),
         image: product.image || null,
         stock_qty: product.stock_qty != null ? product.stock_qty : '',
         stock: product.stock ?? 80,
@@ -38,7 +36,6 @@ export const ProductModal = ({
       setFormData({
         name: '',
         pack: '',
-        price: '',
         image: null,
         stock_qty: '',
         stock: 80,
@@ -75,19 +72,21 @@ export const ProductModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.pack || !formData.price) return;
+    if (!formData.name.trim() || !formData.pack.trim()) return;
 
     setLoading(true);
-    const cleanPrice = formData.price.trim().replace('₹', '');
     const productPayload = {
       name: formData.name.trim(),
       pack: formData.pack.trim(),
-      price: `₹${cleanPrice}`,
       image: formData.image || null,
       stock_qty: formData.stock_qty !== '' && formData.stock_qty != null ? parseInt(formData.stock_qty) || 0 : null,
       stock: parseInt(formData.stock) || 0,
       on: formData.on,
     };
+
+    if (product?.price) {
+      productPayload.price = product.price;
+    }
 
     try {
       await onSave(productPayload, product?.id);
@@ -230,32 +229,18 @@ export const ProductModal = ({
           />
         </div>
 
-        <div className="f-row">
-          <div className="f-group">
-            <label>Pack Size</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. 30 kg"
-              value={formData.pack}
-              onChange={(e) => setFormData({ ...formData, pack: e.target.value })}
-            />
-          </div>
-          <div className="f-group">
-            <label>Price (₹)</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. 1,340"
-              value={formData.price}
-              onChange={(e) =>
-                setFormData({ ...formData, price: e.target.value })
-              }
-            />
-          </div>
+        <div className="f-group">
+          <label>Pack Size</label>
+          <input
+            type="text"
+            required
+            placeholder="e.g. 30 kg, 5 kg"
+            value={formData.pack}
+            onChange={(e) => setFormData({ ...formData, pack: e.target.value })}
+          />
         </div>
 
-        <div className="f-group f-check" style={{ marginTop: '6px' }}>
+        <div className="f-group f-check" style={{ marginTop: '8px' }}>
           <input
             type="checkbox"
             id="pOn"

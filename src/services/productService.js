@@ -76,11 +76,14 @@ export const productService = {
     const payload = {
       name: productData.name,
       pack: productData.pack,
-      price: productData.price,
       stock: productData.stock ?? 80,
       stock_qty: productData.stock_qty !== undefined ? productData.stock_qty : null,
       on: productData.on ?? true,
     };
+
+    if (productData.price !== undefined) {
+      payload.price = productData.price;
+    }
 
     if (productData.image) {
       payload.image = productData.image;
@@ -98,10 +101,12 @@ export const productService = {
         const fallbackPayload = {
           name: productData.name,
           pack: productData.pack,
-          price: productData.price,
           stock: productData.stock ?? 80,
           on: productData.on ?? true,
         };
+        if (productData.price !== undefined) {
+          fallbackPayload.price = productData.price;
+        }
         const { data: fbData, error: fbError } = await supabase
           .from('products')
           .insert([fallbackPayload])
@@ -130,12 +135,15 @@ export const productService = {
     const payload = {
       name: productData.name,
       pack: productData.pack,
-      price: productData.price,
       stock: productData.stock,
       stock_qty: productData.stock_qty !== undefined ? productData.stock_qty : null,
       on: productData.on,
       updated_at: new Date().toISOString(),
     };
+
+    if (productData.price !== undefined) {
+      payload.price = productData.price;
+    }
 
     if (productData.image !== undefined) {
       payload.image = productData.image;
@@ -154,11 +162,13 @@ export const productService = {
         const fallbackPayload = {
           name: productData.name,
           pack: productData.pack,
-          price: productData.price,
           stock: productData.stock,
           on: productData.on,
           updated_at: new Date().toISOString(),
         };
+        if (productData.price !== undefined) {
+          fallbackPayload.price = productData.price;
+        }
         const { data: fbData, error: fbError } = await supabase
           .from('products')
           .update(fallbackPayload)

@@ -47,8 +47,8 @@ export const BestDistributorsTable = ({ distributors = [] }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink-soft)' }}>
-                    No distributors found in database
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink-soft)', fontSize: '13px' }}>
+                    No distributors registered yet
                   </td>
                 </tr>
               )}

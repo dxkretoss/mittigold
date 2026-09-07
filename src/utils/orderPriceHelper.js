@@ -80,7 +80,7 @@ export function computeOrderValue(order, invoices = []) {
   if (Array.isArray(order.items) && order.items.length > 0) {
     const total = order.items.reduce((sum, item) => {
       const q = parseInt(String(item.qty).replace(/\D/g, ''), 10) || 1;
-      const unitPrice = item.price || parseItemPrice(item.name, item.pack);
+      const unitPrice = item.price != null && !isNaN(Number(item.price)) ? Number(item.price) : parseItemPrice(item.name, item.pack);
       return sum + q * unitPrice;
     }, 0);
     return `₹${total.toLocaleString('en-IN')}`;

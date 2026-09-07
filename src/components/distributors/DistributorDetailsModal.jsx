@@ -239,6 +239,23 @@ export const DistributorDetailsModal = ({
                       status={rawOutstanding === 0 || distributor.pay === 'paid' ? 'paid' : 'unpaid'}
                       label={rawOutstanding === 0 || distributor.pay === 'paid' ? 'Paid ✓' : 'Payment Due'}
                     />
+                    {distributor.reference_type && (
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          background: distributor.reference_type === 'broker' ? 'var(--amber-bg)' : distributor.reference_type === 'employee' ? 'var(--green-bg)' : '#F1EFEA',
+                          border: '1px solid var(--line)',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: distributor.reference_type === 'broker' ? '#886214' : distributor.reference_type === 'employee' ? 'var(--green)' : 'var(--ink-soft)',
+                        }}
+                      >
+                        {distributor.reference_type === 'company'
+                          ? 'Ref: Company Own'
+                          : `Ref: ${distributor.reference_type === 'broker' ? 'Broker' : 'Employee'} (${distributor.reference_name || 'N/A'})`}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '12px', color: 'var(--ink-soft)' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -736,6 +753,14 @@ export const DistributorDetailsModal = ({
                       <div style={{ color: 'var(--ink-soft)', fontSize: '11px' }}>Contact Phone</div>
                       <div style={{ fontFamily: 'IBM Plex Mono, monospace', color: 'var(--ink)' }}>
                         {distributor.phone || 'Not Provided'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--ink-soft)', fontSize: '11px' }}>Acquired / Reference By</div>
+                      <div style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                        {distributor.reference_type === 'company' || !distributor.reference_type
+                          ? 'Company Own (Direct)'
+                          : `${distributor.reference_type === 'broker' ? 'Broker' : 'Sales Employee'}: ${distributor.reference_name || 'N/A'}`}
                       </div>
                     </div>
                   </div>

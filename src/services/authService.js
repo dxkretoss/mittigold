@@ -144,11 +144,11 @@ export const authService = {
     const { data, error } = await query;
 
     if (error) {
-      throw new Error(`Database error: ${error.message}`);
+      throw new Error('Unable to verify credentials. Please try again.');
     }
 
     if (!data || data.length === 0) {
-      throw new Error('Account not found in database.');
+      throw new Error('No account found with this email address.');
     }
 
     const profile = data[0];
