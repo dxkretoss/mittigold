@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, UserCheck, Phone, Mail, MapPin, Target, Award, Edit2, Trash2, CheckCircle2, AlertCircle, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, UserCheck, Phone, Mail, MapPin, Target, Award, Edit2, Trash2, CheckCircle2, AlertCircle, Users, Eye } from 'lucide-react';
 import { employeeService } from '../../services/employeeService';
 import { EmployeeModal } from '../../components/sales/EmployeeModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -9,6 +10,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { Pagination } from '../../components/common/Pagination';
 
 export const SalesTeam = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,11 @@ export const SalesTeam = () => {
                           <tr key={emp.id}>
                             {/* Avatar & Name */}
                             <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                                onClick={() => navigate(`/sales-team/${emp.id}`)}
+                                title="Click to view sales employee breakdown & details"
+                              >
                                 <div
                                   className="av"
                                   style={{
@@ -291,7 +297,26 @@ export const SalesTeam = () => {
 
                             {/* Actions */}
                             <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline"
+                                  onClick={() => navigate(`/sales-team/${emp.id}`)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    fontSize: '11.5px',
+                                    height: '28px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    borderRadius: '6px',
+                                    color: 'var(--navy)',
+                                  }}
+                                  title="View Employee Details & Breakdown"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-wheat" />
+                                  <span>View</span>
+                                </button>
                                 <button
                                   type="button"
                                   className="icon-sm"

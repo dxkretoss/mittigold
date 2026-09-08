@@ -13,21 +13,37 @@ const STATUS_OPTIONS = [
 ];
 
 function getAllowedStatusOptions(currentStatus) {
-  if (currentStatus === 'pending' || currentStatus === 'approved') {
+  const norm = String(currentStatus || '').trim().toLowerCase();
+  if (norm === 'pending') {
     return [
       { value: 'pending', label: 'Pending' },
       { value: 'approved', label: 'Approved' },
       { value: 'dispatched', label: 'Dispatched' },
     ];
   }
-  if (currentStatus === 'dispatched') {
+  if (norm === 'approved') {
+    return [
+      { value: 'approved', label: 'Approved' },
+      { value: 'dispatched', label: 'Dispatched' },
+    ];
+  }
+  if (norm === 'dispatched') {
     return [
       { value: 'dispatched', label: 'Dispatched' },
       { value: 'delivered', label: 'Delivered' },
       { value: 'approved', label: 'Approved' },
     ];
   }
-  return STATUS_OPTIONS;
+  if (norm === 'delivered') {
+    return [
+      { value: 'delivered', label: 'Delivered' },
+    ];
+  }
+  // Default fallback for any processed status: do NOT include pending
+  return [
+    { value: 'approved', label: 'Approved' },
+    { value: 'dispatched', label: 'Dispatched' },
+  ];
 }
 
 function renderQtySummary(order) {
@@ -252,8 +268,13 @@ export const OrdersTable = ({
                         <button
                           type="button"
                           className="icon-sm"
-                          onClick={() => onEdit(o)}
-                          title="Edit Order"
+                          disabled={o.status !== 'pending'}
+                          onClick={() => o.status === 'pending' && onEdit(o)}
+                          style={{
+                            opacity: o.status === 'pending' ? 1 : 0.35,
+                            cursor: o.status === 'pending' ? 'pointer' : 'not-allowed',
+                          }}
+                          title={o.status === 'pending' ? 'Edit Order' : `Cannot edit order once ${o.status}`}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -262,8 +283,17 @@ export const OrdersTable = ({
                         <button
                           type="button"
                           className="icon-sm danger"
-                          onClick={() => onDelete(o)}
-                          title="Delete Order"
+                          disabled={o.status !== 'pending' && o.status !== 'delivered'}
+                          onClick={() => (o.status === 'pending' || o.status === 'delivered') && onDelete(o)}
+                          style={{
+                            opacity: (o.status === 'pending' || o.status === 'delivered') ? 1 : 0.35,
+                            cursor: (o.status === 'pending' || o.status === 'delivered') ? 'pointer' : 'not-allowed',
+                          }}
+                          title={
+                            (o.status === 'pending' || o.status === 'delivered')
+                              ? 'Delete Order'
+                              : `Cannot delete order while ${o.status} (allowed once delivered)`
+                          }
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

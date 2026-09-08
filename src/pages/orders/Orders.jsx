@@ -65,6 +65,17 @@ export const Orders = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     const targetOrder = orders.find((o) => o.id === orderId);
+    const currentNorm = targetOrder ? String(targetOrder.status || '').trim().toLowerCase() : '';
+    const targetNorm = String(newStatus || '').trim().toLowerCase();
+
+    // Validation: Cannot revert back to pending once approved, dispatched or delivered
+    if (targetNorm === 'pending' && currentNorm && currentNorm !== 'pending') {
+      showError(
+        'Invalid Status Transition',
+        `Order ${orderId} is ${targetOrder.status} and cannot be reverted back to Pending.`
+      );
+      return;
+    }
 
     // Validation: Cannot directly jump from pending/approved to delivered without dispatching first
     if (newStatus === 'delivered' && targetOrder && targetOrder.status !== 'dispatched') {
@@ -152,10 +163,18 @@ export const Orders = () => {
   };
 
   const handleOpenEdit = (order) => {
+    if (order.status !== 'pending') {
+      showError('Cannot Edit Order', `Order ${order.id} is ${order.status} and cannot be edited.`);
+      return;
+    }
     setModalState({ isOpen: true, order });
   };
 
   const handleOpenDelete = (order) => {
+    if (order.status !== 'pending' && order.status !== 'delivered') {
+      showError('Cannot Delete Order', `Order ${order.id} is ${order.status} and cannot be deleted until delivered.`);
+      return;
+    }
     setDeleteDialog({ isOpen: true, order });
   };
 

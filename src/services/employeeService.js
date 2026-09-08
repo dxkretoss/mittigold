@@ -51,6 +51,116 @@ export const employeeService = {
   },
 
   /**
+   * Fetch complete employee detail with associated distributors, leads, and orders
+   */
+  async getDetails(empId) {
+    const all = await this.getAll();
+    const cleanId = String(empId || '').trim();
+    const decodedName = decodeURIComponent(cleanId).toLowerCase();
+
+    const employee = all.find((e) =>
+      e.id === empId ||
+      String(e.id) === cleanId ||
+      (e.name && e.name.trim().toLowerCase() === decodedName)
+    );
+
+    if (!employee) return null;
+
+    // Fetch distributors, leads, and orders to gather relationships
+    let allDistributors = [];
+    let allLeads = [];
+    let allOrders = [];
+
+    try {
+      const { data } = await supabase.from('distributors').select('*');
+      if (data) allDistributors = data;
+    } catch (_) {}
+    if (!allDistributors.length) {
+      try {
+        allDistributors = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+      } catch (_) {}
+    }
+
+    try {
+      const { data } = await supabase.from('leads').select('*');
+      if (data) allLeads = data;
+    } catch (_) {}
+    if (!allLeads.length) {
+      try {
+        allLeads = JSON.parse(localStorage.getItem('mittigold_leads_data') || '[]');
+      } catch (_) {}
+    }
+
+    try {
+      const { data } = await supabase.from('orders').select('*');
+      if (data) allOrders = data;
+    } catch (_) {}
+    if (!allOrders.length) {
+      try {
+        allOrders = JSON.parse(localStorage.getItem('mittigold_orders_data') || '[]');
+      } catch (_) {}
+    }
+
+    const empName = (employee.name || '').trim().toLowerCase();
+    const empIdStr = String(employee.id || '').toLowerCase();
+    const empLastName = empName.split(' ').pop() || '';
+
+    // 1. Associated Distributors (where reference_type === 'employee' and reference matches this employee)
+    const distributors = allDistributors.filter((d) => {
+      const refType = String(d.reference_type || '').toLowerCase();
+      const refId = String(d.reference_id || '').toLowerCase();
+      const refName = String(d.reference_name || '').toLowerCase();
+      return (
+        refType === 'employee' &&
+        ((refId && refId === empIdStr) || (refName && (refName === empName || (empLastName && empLastName.length >= 3 && refName.includes(empLastName)))))
+      );
+    });
+
+    // 2. Associated Leads (where owner explicitly matches employee name)
+    const leads = allLeads.filter((l) => {
+      const owner = String(l.owner || '').trim().toLowerCase();
+      return (
+        owner === empName ||
+        (empLastName && empLastName.length >= 3 && owner.includes(empLastName)) ||
+        (empName.includes(owner) && owner.length >= 4)
+      );
+    });
+
+    // 3. Associated Orders (only from assigned distributors)
+    const distNames = new Set(distributors.map((d) => (d.name || '').trim().toLowerCase()));
+    const distIds = new Set(distributors.map((d) => String(d.id || '').toLowerCase()));
+    const orders = allOrders.filter((o) => {
+      const oDist = (o.dist || '').trim().toLowerCase();
+      const oDistId = String(o.dist_id || '').toLowerCase();
+      return distNames.has(oDist) || (oDistId && distIds.has(oDistId));
+    });
+
+    const totalOrderSales = orders.reduce((sum, o) => {
+      const val = parseFloat(String(o.total || o.order_value || o.amt || '0').replace(/[^0-9.]/g, '')) || 0;
+      return sum + val;
+    }, 0);
+
+    const achieved = employee.achieved_bags != null ? Number(employee.achieved_bags) : totalOrderSales;
+
+    return {
+      employee: {
+        ...employee,
+        achieved_bags: achieved,
+        leads_count: employee.leads_count != null ? Number(employee.leads_count) : leads.length,
+      },
+      distributors,
+      leads,
+      orders,
+      summary: {
+        totalDistributors: distributors.length,
+        totalLeads: leads.length,
+        totalOrders: orders.length,
+        totalSales: totalOrderSales,
+      }
+    };
+  },
+
+  /**
    * Add a new employee
    */
   async add(empData) {

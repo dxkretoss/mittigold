@@ -248,15 +248,6 @@ export const DistributorDetail = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => setIsRecordPaymentOpen(true)}
-            className="btn btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Payment</span>
-          </button>
-          <button
-            type="button"
             onClick={() => setIsEditModalOpen(true)}
             className="btn btn-outline"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
@@ -702,32 +693,16 @@ export const DistributorDetail = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ fontSize: '12.5px', color: 'var(--ink-soft)' }}>
-                Ledger of all payment transactions and uploaded receipt screenshots for {distributor.name}.
+                Payment receipts, transaction IDs, and deposit proofs submitted by <strong>{distributor.name}</strong> for verification.
               </div>
-              <button
-                type="button"
-                onClick={() => setIsRecordPaymentOpen(true)}
-                className="btn btn-primary"
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Upload Next Payment</span>
-              </button>
             </div>
 
             {payments.length === 0 ? (
               <div style={{ padding: '40px 10px', textAlign: 'center', color: 'var(--ink-soft)', border: '1px dashed var(--line)', borderRadius: '10px' }}>
                 <CreditCard className="w-10 h-10 text-wheat opacity-60" style={{ margin: '0 auto 10px' }} />
-                <div style={{ fontSize: '14px', fontWeight: 600 }}>No payments recorded yet</div>
-                <div style={{ fontSize: '12px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 14px' }}>
-                  Upload each bank transfer slip, UPI receipt screenshot, or cheque photo to keep an audit trail.
+                <div style={{ fontSize: '14px', fontWeight: 600 }}>No payment receipts submitted yet</div>
+                <div style={{ fontSize: '12px', marginTop: '4px', maxWidth: '420px', margin: '4px auto 0' }}>
+                  Payment receipts, UPI screenshots, and bank deposit slips uploaded by {distributor.name} will appear here for admin review.
                 </div>
               </div>
             ) : (

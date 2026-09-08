@@ -303,7 +303,7 @@ export const OrderDetailsModal = ({
           <button type="button" className="btn btn-outline" onClick={onClose}>
             Close
           </button>
-          {onEdit && (
+          {onEdit && order.status === 'pending' && (
             <button
               type="button"
               className="btn btn-outline"

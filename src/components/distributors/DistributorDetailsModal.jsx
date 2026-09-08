@@ -591,41 +591,17 @@ export const DistributorDetailsModal = ({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                    Track all payments, bank references, and proof screenshots for this distributor.
+                    Payment receipts, bank references, and proof screenshots submitted by <strong>{distributor.name}</strong>.
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsRecordPaymentOpen(true)}
-                    className="btn btn-primary"
-                    style={{
-                      padding: '4px 10px',
-                      fontSize: '11.5px',
-                      height: '28px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Upload Next Payment</span>
-                  </button>
                 </div>
 
                 {payments.length === 0 ? (
                   <div style={{ padding: '30px 10px', textAlign: 'center', color: 'var(--ink-soft)', border: '1px dashed var(--line)', borderRadius: '8px' }}>
                     <CreditCard className="w-8 h-8 text-wheat opacity-60" style={{ margin: '0 auto 8px' }} />
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>No payments recorded yet</div>
-                    <div style={{ fontSize: '11.5px', marginTop: '4px', maxWidth: '360px', margin: '4px auto 12px' }}>
-                      Record every bank transfer, UPI transaction, and receipt screenshot to maintain an audit trail.
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>No payment receipts submitted yet</div>
+                    <div style={{ fontSize: '11.5px', marginTop: '4px', maxWidth: '360px', margin: '4px auto 0' }}>
+                      Payment receipts and transaction proofs uploaded by {distributor.name} will appear here for verification.
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsRecordPaymentOpen(true)}
-                      className="btn btn-primary"
-                      style={{ padding: '6px 14px', fontSize: '12px' }}
-                    >
-                      + Record First Payment
-                    </button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto" style={{ border: '1px solid var(--line)', borderRadius: '8px' }}>
