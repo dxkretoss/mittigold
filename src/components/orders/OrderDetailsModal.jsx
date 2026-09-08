@@ -97,9 +97,10 @@ export const OrderDetailsModal = ({
 
   const items = parseDetailedItems(order);
   const isAdjusted = Boolean(
-    order.original_qty &&
-    String(order.original_qty).trim() &&
-    String(order.original_qty).trim() !== String(order.qty).trim()
+    order.is_adjusted ||
+    (order.original_qty &&
+      String(order.original_qty).trim() &&
+      String(order.original_qty).trim().toLowerCase() !== String(order.qty).trim().toLowerCase())
   );
 
   const totalOrderValue = computeOrderValue(order);
@@ -177,15 +178,32 @@ export const OrderDetailsModal = ({
             }}
           >
             <AlertTriangle className="w-5 h-5 text-amber flex-shrink-0" style={{ marginTop: '1px' }} />
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--navy)' }}>
-                Order Quantity Adjusted
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--navy)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Order Quantity Adjusted by Admin</span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'var(--amber-bg)',
+                    color: 'var(--amber)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(185, 131, 46, 0.35)',
+                  }}
+                >
+                  Adjusted Record
+                </span>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--ink)', marginTop: '2px' }}>
-                <strong>Distributor Placed:</strong> <span style={{ color: 'var(--red)', fontWeight: 600 }}>{order.original_qty}</span>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--ink)', marginTop: '2px' }}>
-                <strong>Admin Fulfilled:</strong> <span style={{ color: 'var(--green)', fontWeight: 700 }}>{order.qty}</span>
+              <div style={{ fontSize: '12px', color: 'var(--ink)', marginTop: '4px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div>
+                  <span style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Distributor Placed:</span>{' '}
+                  <strong style={{ color: 'var(--red)', fontWeight: 700 }}>{order.original_qty || 'Initial request'}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Admin Fulfilled:</span>{' '}
+                  <strong style={{ color: 'var(--green)', fontWeight: 700 }}>{order.qty}</strong>
+                </div>
               </div>
             </div>
           </div>

@@ -179,10 +179,33 @@ export const orderService = {
 
       const { data, error } = await query;
       if (!error && data) {
+        const local = getLocalOrders();
+        const merged = data.map((remote) => {
+          const loc = local.find((l) => l.id === remote.id);
+          const origQty = remote.original_qty || loc?.original_qty || null;
+          const curQty = remote.qty || loc?.qty || '';
+          const isAdjusted = Boolean(
+            remote.is_adjusted ||
+            loc?.is_adjusted ||
+            (origQty && String(origQty).trim() && String(origQty).trim() !== String(curQty).trim())
+          );
+
+          return {
+            ...loc,
+            ...remote,
+            items: remote.items || loc?.items || null,
+            original_qty: origQty,
+            original_items: remote.original_items || loc?.original_items || null,
+            is_adjusted: isAdjusted,
+            order_value: remote.order_value || remote.total || loc?.order_value,
+            amt: remote.amt != null ? remote.amt : loc?.amt,
+          };
+        });
+
         if (filter === 'all') {
-          saveLocalOrders(data);
+          saveLocalOrders(merged);
         }
-        return data;
+        return merged;
       }
     } catch (err) {
       console.warn('Supabase orders query error:', err);
@@ -291,8 +314,11 @@ export const orderService = {
 
     const orderDate = orderData.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const orderTotal = orderData.total || orderData.order_value || (orderData.amt ? `₹${Number(orderData.amt).toLocaleString('en-IN')}` : '₹0');
+    const originalQty = orderData.original_qty || orderData.qty;
+    const originalItems = orderData.original_items || orderData.items || null;
+    const isAdjusted = Boolean(orderData.is_adjusted || (originalQty && String(originalQty).trim() !== String(orderData.qty).trim()));
 
-    // Exact columns present in Supabase orders table schema
+    // Columns present in Supabase orders table schema
     const dbPayload = {
       id: nextId,
       dist: orderData.dist,
@@ -303,17 +329,18 @@ export const orderService = {
       eta: orderData.eta || '—',
       transport: orderData.transport || '—',
       status: orderData.status || 'pending',
+      items: orderData.items || null,
+      original_qty: originalQty,
+      original_items: originalItems,
+      amt: orderData.amt !== undefined ? orderData.amt : null,
+      order_value: orderTotal,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     const fullOrder = {
       ...dbPayload,
-      items: orderData.items || null,
-      original_qty: orderData.original_qty || orderData.qty,
-      original_items: orderData.original_items || orderData.items || null,
-      amt: orderData.amt !== undefined ? orderData.amt : null,
-      order_value: orderTotal,
+      is_adjusted: isAdjusted,
     };
 
     try {
@@ -327,8 +354,9 @@ export const orderService = {
         const savedItem = {
           ...data[0],
           items: orderData.items || null,
-          original_qty: orderData.original_qty || orderData.qty,
-          original_items: orderData.original_items || orderData.items || null,
+          original_qty: originalQty,
+          original_items: originalItems,
+          is_adjusted: isAdjusted,
           amt: orderData.amt !== undefined ? orderData.amt : null,
           order_value: orderTotal,
         };
@@ -409,6 +437,11 @@ export const orderService = {
     const original_qty = orderData.original_qty || existing?.original_qty || (existing?.qty && orderData.qty !== existing.qty ? existing.qty : null);
     const original_items = orderData.original_items || existing?.original_items || (existing?.items && orderData.items !== existing.items ? existing.items : null);
 
+    const isAdjusted = Boolean(
+      orderData.is_adjusted ||
+      (original_qty && String(original_qty).trim() && String(original_qty).trim() !== String(orderData.qty || existing?.qty).trim())
+    );
+
     // Auto-detect zone
     let zone = orderData.zone || existing?.zone;
     if (!zone && orderData.dist) {
@@ -423,7 +456,7 @@ export const orderService = {
     const orderDate = orderData.date || existing?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const orderTotal = orderData.total || orderData.order_value || existing?.total || existing?.order_value || (orderData.amt ? `₹${Number(orderData.amt).toLocaleString('en-IN')}` : '₹0');
 
-    // Only send valid columns in Supabase orders table
+    // Send valid columns in Supabase orders table
     const dbPayload = {
       dist: orderData.dist,
       zone: zone,
@@ -433,6 +466,11 @@ export const orderService = {
       eta: orderData.eta,
       transport: orderData.transport || '—',
       status: orderData.status || 'pending',
+      items: orderData.items !== undefined ? orderData.items : existing?.items || null,
+      original_qty: original_qty,
+      original_items: original_items,
+      amt: orderData.amt !== undefined ? orderData.amt : existing?.amt,
+      order_value: orderData.order_value || (orderData.amt ? `₹${orderData.amt.toLocaleString('en-IN')}` : existing?.order_value),
       updated_at: new Date().toISOString()
     };
 
@@ -450,6 +488,7 @@ export const orderService = {
           items: orderData.items !== undefined ? orderData.items : existing?.items,
           original_qty,
           original_items,
+          is_adjusted: isAdjusted,
           amt: orderData.amt !== undefined ? orderData.amt : existing?.amt,
           order_value: orderData.order_value || (orderData.amt ? `₹${orderData.amt.toLocaleString('en-IN')}` : existing?.order_value),
         };
@@ -471,6 +510,7 @@ export const orderService = {
       items: orderData.items !== undefined ? orderData.items : existing?.items,
       original_qty,
       original_items,
+      is_adjusted: isAdjusted,
       amt: orderData.amt !== undefined ? orderData.amt : existing?.amt,
       order_value: orderData.order_value || (orderData.amt ? `₹${orderData.amt.toLocaleString('en-IN')}` : existing?.order_value),
     };

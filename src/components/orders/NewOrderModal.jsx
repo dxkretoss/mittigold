@@ -233,19 +233,28 @@ export const NewOrderModal = ({
       const orderDate = order?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const orderTotal = `₹${totalValNum.toLocaleString('en-IN')}`;
 
+      const newQtyStr = lineDescriptions.join(', ');
+      const origQty = order?.original_qty || (isEditing ? (order?.qty || newQtyStr) : newQtyStr);
+      const origItems = order?.original_items || (isEditing ? (order?.items || structuredItems) : structuredItems);
+      const isQtyAdjusted = isEditing && (
+        String(origQty).trim().toLowerCase() !== String(newQtyStr).trim().toLowerCase() ||
+        Boolean(order?.is_adjusted)
+      );
+
       const orderPayload = {
         dist: selectedDistObj?.name || dist,
         dist_id: selectedDistObj?.id || null,
         zone: targetZone,
         date: orderDate,
         total: orderTotal,
-        qty: lineDescriptions.join(', '),
-        original_qty: order?.original_qty || (isEditing ? (order?.qty || lineDescriptions.join(', ')) : lineDescriptions.join(', ')),
+        qty: newQtyStr,
+        original_qty: origQty,
+        original_items: origItems,
+        is_adjusted: isQtyAdjusted,
         eta: formatDateDisplay(eta),
         transport: transport.trim() || '—',
         status: status || 'pending',
         items: structuredItems,
-        original_items: order?.original_items || (isEditing ? (order?.items || structuredItems) : structuredItems),
         amt: totalValNum,
         order_value: orderTotal,
       };

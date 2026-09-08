@@ -30,23 +30,26 @@ function getAllowedStatusOptions(currentStatus) {
   return STATUS_OPTIONS;
 }
 
-function renderQtySummary(qtyStr, items, originalQty) {
-  if (!qtyStr) return '—';
-
+function renderQtySummary(order) {
+  if (!order) return '—';
+  const qtyStr = order.qty || '';
+  const items = order.items;
+  const originalQty = order.original_qty;
   const isAdjusted = Boolean(
-    originalQty &&
-    String(originalQty).trim() &&
-    String(originalQty).trim() !== String(qtyStr).trim()
+    order.is_adjusted ||
+    (originalQty &&
+      String(originalQty).trim() &&
+      String(originalQty).trim().toLowerCase() !== String(qtyStr).trim().toLowerCase())
   );
 
-  let mainQty = qtyStr;
+  let mainQty = qtyStr || '—';
   let extraBadge = null;
   let fullTooltip = qtyStr;
 
   if (Array.isArray(items) && items.length > 1) {
     mainQty = `${items[0].qty} bags · ${items[0].name}${items[0].pack ? ` (${items[0].pack})` : ''}`;
     const extraCount = items.length - 1;
-    fullTooltip = items.map((it) => `${it.qty} bags · ${it.name} (${it.pack})`).join('\n');
+    fullTooltip = items.map((it) => `${it.qty} bags · ${it.name} (${it.pack || ''})`).join('\n');
     extraBadge = (
       <span
         style={{
@@ -97,17 +100,21 @@ function renderQtySummary(qtyStr, items, originalQty) {
       {isAdjusted && (
         <span
           style={{
-            fontSize: '10px',
+            fontSize: '10.5px',
             fontWeight: 700,
             background: 'var(--amber-bg)',
             color: 'var(--amber)',
-            padding: '1px 6px',
+            padding: '2px 7px',
             borderRadius: '4px',
             border: '1px solid rgba(185, 131, 46, 0.35)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
             cursor: 'help',
           }}
-          title={`Originally ordered ${originalQty} (adjusted by Admin). Click View to see breakdown.`}
+          title={`Original request: ${originalQty || 'Initial quantity'} (Adjusted by Admin). Click View to see breakdown.`}
         >
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--amber)' }}></span>
           Adjusted
         </span>
       )}
@@ -168,7 +175,7 @@ export const OrdersTable = ({
                   >
                     {o.dist}
                   </td>
-                  <td className="zoneword">{renderQtySummary(o.qty, o.items, o.original_qty)}</td>
+                  <td className="zoneword">{renderQtySummary(o)}</td>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>
                     {computeOrderValue(o)}
                   </td>

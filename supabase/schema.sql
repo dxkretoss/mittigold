@@ -457,6 +457,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     transport TEXT DEFAULT '—',
     amt NUMERIC,
     order_value TEXT,
+    is_adjusted BOOLEAN DEFAULT false,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'dispatched', 'delivered', 'cancelled')),
     date TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -469,6 +470,7 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS transport TEXT DEFAULT '—';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS zone TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS amt NUMERIC;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_value TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_adjusted BOOLEAN DEFAULT false;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS date TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
