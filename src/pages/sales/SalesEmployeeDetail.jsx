@@ -15,16 +15,22 @@ import {
   Target,
   Award,
   Eye,
+  EyeOff,
   ExternalLink,
   ShieldCheck,
   Briefcase,
   Layers,
   CheckCircle2,
+  Smartphone,
+  Copy,
+  CheckCheck,
+  Key,
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { GrainGauge } from '../../components/common/GrainGauge';
 import { Skeleton } from '../../components/common/Skeleton';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { Modal } from '../../components/common/Modal';
 import { EmployeeModal } from '../../components/sales/EmployeeModal';
 import { OrderDetailsModal } from '../../components/orders/OrderDetailsModal';
 import { employeeService } from '../../services/employeeService';
@@ -43,6 +49,9 @@ export const SalesEmployeeDetail = () => {
   const [activeTab, setActiveTab] = useState('distributors'); // 'distributors' | 'leads' | 'orders' | 'profile'
   const [orderFilter, setOrderFilter] = useState('all');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState(false);
+  const [showAppPassword, setShowAppPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const [selectedOrderForView, setSelectedOrderForView] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     isOpen: false,
@@ -315,6 +324,32 @@ export const SalesEmployeeDetail = () => {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Show Credentials Button */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setIsCredentialsModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 13px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--navy)',
+                borderColor: 'var(--wheat)',
+                background: 'var(--amber-bg)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+              }}
+              title="View mobile app login email & password"
+            >
+              <Key className="w-3.5 h-3.5 text-wheat" />
+              <span>Show Credentials</span>
+            </button>
           </div>
         </div>
 
@@ -754,6 +789,7 @@ export const SalesEmployeeDetail = () => {
         {/* TAB 4: PROFILE & ROLE INFO */}
         {activeTab === 'profile' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            {/* Card 1: Official Profile */}
             <div style={{ background: '#FAFAF8', border: '1px solid var(--line)', borderRadius: '10px', padding: '18px' }}>
               <h4 style={{ margin: '0 0 14px', fontSize: '14px', color: 'var(--navy)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ShieldCheck className="w-4 h-4 text-wheat" />
@@ -783,6 +819,114 @@ export const SalesEmployeeDetail = () => {
               </div>
             </div>
 
+            {/* Card 2: Mobile App Login Credentials */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(200, 155, 60, 0.08) 0%, #FAFAF8 100%)',
+                border: '1px solid rgba(200, 155, 60, 0.35)',
+                borderRadius: '10px',
+                padding: '18px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--navy)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Smartphone className="w-4 h-4 text-wheat" />
+                  <span>Mobile App Login</span>
+                </h4>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 600,
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    background: 'var(--amber-bg)',
+                    color: 'var(--amber)',
+                    border: '1px solid rgba(185, 131, 46, 0.3)',
+                  }}
+                >
+                  Active App Account
+                </span>
+              </div>
+
+              <div style={{ fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <div style={{ color: 'var(--ink-soft)', fontSize: '11px' }}>Login Email (Username)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '3px', background: '#FFFFFF', border: '1px solid var(--line)', borderRadius: '6px', padding: '6px 10px' }}>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: '12.5px', color: 'var(--navy)' }}>
+                      {employee.email || '—'}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!employee.email}
+                      onClick={() => {
+                        if (!employee.email) return;
+                        navigator.clipboard.writeText(employee.email);
+                        setCopiedField('email');
+                        setTimeout(() => setCopiedField(null), 2000);
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: employee.email ? 'pointer' : 'default', padding: '2px', display: 'flex', alignItems: 'center', gap: '4px', color: copiedField === 'email' ? 'var(--green)' : 'var(--ink-soft)', fontSize: '11px' }}
+                      title="Copy Login Email"
+                    >
+                      {copiedField === 'email' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'email' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ color: 'var(--ink-soft)', fontSize: '11px' }}>Mobile App Password</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '3px', background: '#FFFFFF', border: '1px solid var(--line)', borderRadius: '6px', padding: '6px 10px' }}>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink)' }}>
+                      {showAppPassword ? (employee.password || 'MG@1234') : '••••••••'}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAppPassword(!showAppPassword)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--ink-soft)' }}
+                        title={showAppPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showAppPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pass = employee.password || 'MG@1234';
+                          navigator.clipboard.writeText(pass);
+                          setCopiedField('pass');
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', gap: '4px', color: copiedField === 'pass' ? 'var(--green)' : 'var(--ink-soft)', fontSize: '11px' }}
+                        title="Copy Password"
+                      >
+                        {copiedField === 'pass' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedField === 'pass' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ paddingTop: '4px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      const empEmail = employee.email || '—';
+                      const pass = employee.password || 'MG@1234';
+                      const message = `🌾 *MittiGold Sales Mobile App Login*\nEmployee: ${employee.name}\nLogin Email: ${empEmail}\nPassword: ${pass}`;
+                      navigator.clipboard.writeText(message);
+                      showSuccess('Credentials Copied', 'Mobile login credentials copied to clipboard to share with employee.');
+                    }}
+                    style={{ width: '100%', fontSize: '12px', padding: '6px 12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-wheat" />
+                    <span>Copy All Credentials to Share</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Territory & Quota Summary */}
             <div style={{ background: '#FAFAF8', border: '1px solid var(--line)', borderRadius: '10px', padding: '18px' }}>
               <h4 style={{ margin: '0 0 14px', fontSize: '14px', color: 'var(--navy)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MapPin className="w-4 h-4 text-wheat" />
@@ -828,6 +972,205 @@ export const SalesEmployeeDetail = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveEmployee}
       />
+
+      {/* Show Credentials Modal */}
+      <Modal
+        isOpen={isCredentialsModalOpen}
+        onClose={() => setIsCredentialsModalOpen(false)}
+        title="Mobile App Login Credentials"
+        maxWidth="500px"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                const empEmail = employee.email || '—';
+                const pass = employee.password || 'MG@1234';
+                const message = `🌾 *MittiGold Sales Mobile App Login*\nEmployee: ${employee.name}\nLogin Email: ${empEmail}\nPassword: ${pass}`;
+                navigator.clipboard.writeText(message);
+                showSuccess('Credentials Copied', 'Login credentials copied to clipboard to share with employee.');
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy All to Share</span>
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => setIsCredentialsModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Employee summary header */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px',
+              background: '#FAFAF8',
+              border: '1px solid var(--line)',
+              borderRadius: '10px',
+            }}
+          >
+            <div
+              className="av"
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                background: 'var(--amber-bg)',
+                color: 'var(--amber)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '14px',
+                border: '1px solid rgba(185, 131, 46, 0.25)',
+                flexShrink: 0,
+              }}
+            >
+              {initials(employee.name)}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: '14px' }}>
+                {employee.name}
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)' }}>
+                {employee.role || 'Field Sales Representative'} · {employee.zone || 'Gujarat'}
+              </div>
+            </div>
+          </div>
+
+          {/* Credentials Box */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(200, 155, 60, 0.08) 0%, #FAFAF8 100%)',
+              border: '1px solid rgba(200, 155, 60, 0.35)',
+              borderRadius: '10px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+            }}
+          >
+            {/* Login Email */}
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--ink-soft)', fontWeight: 600, marginBottom: '4px' }}>
+                Login Email (Username)
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#FFFFFF',
+                  border: '1px solid var(--line)',
+                  borderRadius: '7px',
+                  padding: '8px 12px',
+                }}
+              >
+                <span className="mono" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--navy)' }}>
+                  {employee.email || 'Not configured'}
+                </span>
+                <button
+                  type="button"
+                  disabled={!employee.email}
+                  onClick={() => {
+                    if (!employee.email) return;
+                    navigator.clipboard.writeText(employee.email);
+                    setCopiedField('modal_email');
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: employee.email ? 'pointer' : 'default',
+                    color: copiedField === 'modal_email' ? 'var(--green)' : 'var(--ink-soft)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                  }}
+                  title="Copy Email"
+                >
+                  {copiedField === 'modal_email' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedField === 'modal_email' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--ink-soft)', fontWeight: 600, marginBottom: '4px' }}>
+                Mobile App Password
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#FFFFFF',
+                  border: '1px solid var(--line)',
+                  borderRadius: '7px',
+                  padding: '8px 12px',
+                }}
+              >
+                <span className="mono" style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink)', letterSpacing: showAppPassword ? '0.5px' : '2px' }}>
+                  {showAppPassword ? (employee.password || 'MG@1234') : '••••••••'}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAppPassword(!showAppPassword)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--ink-soft)' }}
+                    title={showAppPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showAppPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pass = employee.password || 'MG@1234';
+                      navigator.clipboard.writeText(pass);
+                      setCopiedField('modal_pass');
+                      setTimeout(() => setCopiedField(null), 2000);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: copiedField === 'modal_pass' ? 'var(--green)' : 'var(--ink-soft)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                    }}
+                    title="Copy Password"
+                  >
+                    {copiedField === 'modal_pass' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedField === 'modal_pass' ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', lineHeight: '1.5', background: '#FAF9F6', padding: '10px 12px', borderRadius: '8px', border: '1px dashed var(--line)' }}>
+            📱 <strong>Mobile Login Instructions:</strong> When opening the MittiGold Sales Mobile App, the representative will enter their official email and this password to access their field dashboard.
+          </div>
+        </div>
+      </Modal>
 
       {/* View Order Modal */}
       <OrderDetailsModal

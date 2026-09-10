@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, UserCheck, Phone, Mail, MapPin, Target, Award, Edit2, Trash2, CheckCircle2, AlertCircle, Users, Eye } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, MapPin, Target, Award, Edit2, Trash2, CheckCircle2, AlertCircle, Users, Eye, X } from 'lucide-react';
 import { employeeService } from '../../services/employeeService';
 import { EmployeeModal } from '../../components/sales/EmployeeModal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -77,9 +77,13 @@ export const SalesTeam = () => {
         await employeeService.update(empId, empData);
         showSuccess('Employee Updated', `${empData.name} details updated.`);
       } else {
-        await employeeService.add(empData);
-        showSuccess('Employee Added', `${empData.name} added to the sales team.`);
+        const created = await employeeService.add(empData);
+        showSuccess(
+          'Employee Registered',
+          `${empData.name} created. Login Email: ${created.email || empData.email} | Password: ${created.password || empData.password}`
+        );
       }
+      setModalState({ isOpen: false, employee: null });
       await loadEmployees();
     } catch (err) {
       showError('Save Failed', err.message);
@@ -137,6 +141,57 @@ export const SalesTeam = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Search Box */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#FFFFFF',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '13px',
+                minWidth: '240px',
+                maxWidth: '300px',
+              }}
+            >
+              <Search className="w-4 h-4 text-ink-faint flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Search by name, phone, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  width: '100%',
+                  fontSize: '12.5px',
+                  padding: 0,
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '0 2px',
+                    cursor: 'pointer',
+                    color: 'var(--ink-faint)',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
             <button
               type="button"
               className="btn-primary"
@@ -147,51 +202,8 @@ export const SalesTeam = () => {
           </div>
         </div>
 
-        {/* Search Toolbar */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '14px 24px 8px',
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Search Box */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#FFFFFF',
-              border: '1px solid var(--line)',
-              borderRadius: '9px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              width: '280px',
-            }}
-          >
-            <Search className="w-4 h-4 text-ink-faint" />
-            <input
-              type="text"
-              placeholder="Search by name, phone, email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                width: '100%',
-                fontSize: '12.5px',
-                padding: 0,
-              }}
-            />
-          </div>
-        </div>
-
         {/* Table Content */}
-        <div className="panel-body" style={{ paddingTop: '6px' }}>
+        <div className="panel-body">
           {loading ? (
             <Skeleton variant="table" rows={6} cols={4} />
           ) : (
@@ -248,10 +260,27 @@ export const SalesTeam = () => {
                                   {initials}
                                 </div>
                                 <div>
-                                  <div style={{ fontWeight: 600, color: 'var(--navy)', fontSize: '13.5px' }}>
-                                    {emp.name}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--navy)', fontSize: '13.5px' }}>
+                                      {emp.name}
+                                    </span>
+                                    <span
+                                      className="mono"
+                                      style={{
+                                        fontSize: '10.5px',
+                                        fontWeight: 700,
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        background: 'var(--slate-bg)',
+                                        color: 'var(--navy)',
+                                        border: '1px solid var(--line)',
+                                      }}
+                                      title="Mobile App Login ID"
+                                    >
+                                      {emp.employee_code || emp.id}
+                                    </span>
                                   </div>
-                                  <div style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>
+                                  <div style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '2px' }}>
                                     {emp.email || '—'}
                                   </div>
                                 </div>

@@ -53,6 +53,28 @@ export const Distributors = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener('mittigold-order-created', handleUpdate);
+    window.addEventListener('mittigold-order-updated', handleUpdate);
+    window.addEventListener('mittigold-order-deleted', handleUpdate);
+    window.addEventListener('mittigold-distributor-created', handleUpdate);
+    window.addEventListener('mittigold-distributor-updated', handleUpdate);
+    window.addEventListener('mittigold-payment-created', handleUpdate);
+    window.addEventListener('mittigold-payment-deleted', handleUpdate);
+
+    return () => {
+      window.removeEventListener('mittigold-order-created', handleUpdate);
+      window.removeEventListener('mittigold-order-updated', handleUpdate);
+      window.removeEventListener('mittigold-order-deleted', handleUpdate);
+      window.removeEventListener('mittigold-distributor-created', handleUpdate);
+      window.removeEventListener('mittigold-distributor-updated', handleUpdate);
+      window.removeEventListener('mittigold-payment-created', handleUpdate);
+      window.removeEventListener('mittigold-payment-deleted', handleUpdate);
+    };
   }, []);
 
   const handleOpenDetails = (distributor) => {
@@ -171,7 +193,7 @@ export const Distributors = () => {
         <div>
           <h3>Distributor Directory</h3>
           <div className="hint">
-            <b>{distributors.length} active</b> · Target vs achievement, 1st year
+            <b>{distributors.length} active</b> · Directory & territory assignment
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

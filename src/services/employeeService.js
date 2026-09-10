@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { generateEmployeeCode, generateEmployeePassword } from '../utils/helpers';
 
 const EMPLOYEES_STORAGE_KEY = 'mittigold_employees_data';
 
@@ -14,6 +15,17 @@ function saveLocalEmployees(employees) {
   try {
     localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
   } catch (_) {}
+}
+
+function normalizeEmployeeCredentials(emp, index = 0, all = []) {
+  if (!emp) return emp;
+  const emailLogin = emp.email || '';
+  const pass = emp.password || emp.app_password || `MG@${1000 + (index + 1) * 23}`;
+  return {
+    ...emp,
+    employee_code: emailLogin,
+    password: pass,
+  };
 }
 
 export const employeeService = {
@@ -35,14 +47,15 @@ export const employeeService = {
 
       const { data, error } = await query;
       if (data && !error) {
-        saveLocalEmployees(data);
-        return data;
+        const normalized = data.map((e, idx) => normalizeEmployeeCredentials(e, idx, data));
+        saveLocalEmployees(normalized);
+        return normalized;
       }
     } catch (err) {
       console.warn('Supabase employees query fallback to local:', err);
     }
 
-    const local = getLocalEmployees();
+    const local = getLocalEmployees().map((e, idx, arr) => normalizeEmployeeCredentials(e, idx, arr));
     if (filter === 'all') return local;
     if (filter === 'active' || filter === 'inactive' || filter === 'on_leave') {
       return local.filter((e) => e.status === filter);
@@ -61,6 +74,7 @@ export const employeeService = {
     const employee = all.find((e) =>
       e.id === empId ||
       String(e.id) === cleanId ||
+      e.email === cleanId ||
       (e.name && e.name.trim().toLowerCase() === decodedName)
     );
 
@@ -103,6 +117,7 @@ export const employeeService = {
 
     const empName = (employee.name || '').trim().toLowerCase();
     const empIdStr = String(employee.id || '').toLowerCase();
+    const empEmailStr = String(employee.email || '').toLowerCase();
     const empLastName = empName.split(' ').pop() || '';
 
     // 1. Associated Distributors (where reference_type === 'employee' and reference matches this employee)
@@ -112,7 +127,7 @@ export const employeeService = {
       const refName = String(d.reference_name || '').toLowerCase();
       return (
         refType === 'employee' &&
-        ((refId && refId === empIdStr) || (refName && (refName === empName || (empLastName && empLastName.length >= 3 && refName.includes(empLastName)))))
+        ((refId && (refId === empIdStr || refId === empEmailStr)) || (refName && (refName === empName || (empLastName && empLastName.length >= 3 && refName.includes(empLastName)))))
       );
     });
 
@@ -161,18 +176,22 @@ export const employeeService = {
   },
 
   /**
-   * Add a new employee
+   * Add a new employee with auto-generated ID & Password
    */
   async add(empData) {
-    const newEmp = {
+    const generatedPassword = empData.password || generateEmployeePassword();
+    const cleanEmail = (empData.email || '').trim().toLowerCase();
+
+    // Standard columns present in Supabase employees table
+    const dbPayload = {
       id: empData.id || `emp-${Date.now()}`,
       name: empData.name.trim(),
       role: empData.role || 'Field Sales Officer',
       zone: empData.zone || 'South Gujarat',
       city: empData.city || '',
       phone: empData.phone || '',
-      email: empData.email || '',
-      target_bags: parseInt(empData.target_bags, 10) || 1000,
+      email: cleanEmail,
+      target_bags: parseInt(empData.target_bags, 10) || 500000,
       achieved_bags: parseInt(empData.achieved_bags, 10) || 0,
       leads_count: parseInt(empData.leads_count, 10) || 0,
       status: empData.status || 'active',
@@ -181,66 +200,101 @@ export const employeeService = {
       updated_at: new Date().toISOString(),
     };
 
+    const localRecord = {
+      ...dbPayload,
+      employee_code: cleanEmail,
+      password: generatedPassword,
+    };
+
     try {
-      const { data, error } = await supabase
+      // First try insert with password (in case password column exists in Supabase)
+      let { data, error } = await supabase
         .from('employees')
-        .insert([newEmp])
+        .insert([{ ...dbPayload, password: generatedPassword }])
         .select();
 
+      // If column error PGRST204 occurs (e.g. password column doesn't exist), retry with standard schema
+      if (error && (error.code === 'PGRST204' || String(error.message).includes('column'))) {
+        const retry = await supabase
+          .from('employees')
+          .insert([dbPayload])
+          .select();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (!error && data?.[0]) {
+        const saved = { ...data[0], employee_code: cleanEmail, password: generatedPassword };
         const local = getLocalEmployees();
-        saveLocalEmployees([data[0], ...local]);
+        saveLocalEmployees([saved, ...local.filter((e) => e.id !== saved.id)]);
         this.notify();
-        return data[0];
+        return saved;
+      }
+      if (error) {
+        console.warn('Supabase insert employee error:', error);
       }
     } catch (err) {
-      console.warn('Supabase insert employee fallback to local:', err);
+      console.warn('Supabase insert employee fallback:', err);
     }
 
     const local = getLocalEmployees();
-    const updated = [newEmp, ...local];
+    const updated = [localRecord, ...local.filter((e) => e.id !== localRecord.id)];
     saveLocalEmployees(updated);
     this.notify();
-    return newEmp;
+    return localRecord;
   },
 
   /**
    * Update employee details
    */
   async update(empId, empData) {
+    const cleanEmail = (empData.email || '').trim().toLowerCase();
     const payload = {
       name: empData.name.trim(),
       role: empData.role || 'Field Sales Officer',
-      zone: empData.zone,
-      city: empData.city,
-      phone: empData.phone,
-      email: empData.email,
-      target_bags: parseInt(empData.target_bags, 10) || 1000,
+      zone: empData.zone || 'South Gujarat',
+      city: empData.city || '',
+      phone: empData.phone || '',
+      email: cleanEmail,
+      target_bags: parseInt(empData.target_bags, 10) || 500000,
       achieved_bags: parseInt(empData.achieved_bags, 10) || 0,
       leads_count: parseInt(empData.leads_count, 10) || 0,
       status: empData.status || 'active',
       updated_at: new Date().toISOString(),
     };
 
+    const newPassword = empData.password;
+
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('employees')
-        .update(payload)
+        .update(newPassword ? { ...payload, password: newPassword } : payload)
         .eq('id', empId)
         .select();
 
+      if (error && (error.code === 'PGRST204' || String(error.message).includes('column'))) {
+        const retry = await supabase
+          .from('employees')
+          .update(payload)
+          .eq('id', empId)
+          .select();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (!error && data?.[0]) {
+        const saved = { ...data[0], employee_code: cleanEmail, password: newPassword || data[0].password || 'MG@1234' };
         const local = getLocalEmployees();
-        saveLocalEmployees(local.map((e) => (e.id === empId ? data[0] : e)));
+        saveLocalEmployees(local.map((e) => (e.id === empId ? saved : e)));
         this.notify();
-        return data[0];
+        return saved;
       }
     } catch (err) {
-      console.warn('Supabase update employee fallback to local:', err);
+      console.warn('Supabase update employee fallback:', err);
     }
 
     const local = getLocalEmployees();
-    const merged = local.map((e) => (e.id === empId ? { ...e, ...payload } : e));
+    const merged = local.map((e) => (e.id === empId ? { ...e, ...payload, employee_code: cleanEmail, password: newPassword || e.password } : e));
     saveLocalEmployees(merged);
     this.notify();
     return merged.find((e) => e.id === empId);

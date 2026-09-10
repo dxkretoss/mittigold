@@ -19,11 +19,9 @@ import {
   Calendar,
   Layers,
   ArrowUpRight,
-  TrendingUp,
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
-import { GrainGauge } from '../common/GrainGauge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { initials } from '../../utils/helpers';
 import { distributorService } from '../../services/distributorService';
@@ -351,20 +349,6 @@ export const DistributorDetailsModal = ({
                   {rawOutstanding > 0 ? 'Payment Required' : 'Account Settled'}
                 </div>
               </div>
-            </div>
-
-            {/* Target Gauge Line */}
-            <div style={{ background: '#FAF9F6', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '11.5px' }}>
-                <span style={{ color: 'var(--ink-soft)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <TrendingUp className="w-3.5 h-3.5 text-wheat" />
-                  Target Progress: {distributor.target || 80} Bags / Month
-                </span>
-                <span className="mono" style={{ fontWeight: 700, color: (distributor.target || 0) >= 100 ? 'var(--green)' : 'var(--navy)' }}>
-                  {distributor.target || 0}% Achieved
-                </span>
-              </div>
-              <GrainGauge percent={distributor.target || 0} color={(distributor.target || 0) >= 100 ? 'green' : ''} />
             </div>
 
             {/* Tabs Bar */}

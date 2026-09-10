@@ -159,6 +159,61 @@ async function creditOrderReference(orderData, previousAmt = 0) {
 }
 
 /**
+ * Helper to update Distributor's outstanding balance when order is created, modified or deleted
+ */
+async function updateDistributorOutstanding(distNameOrId, deltaAmt) {
+  if (!distNameOrId || deltaAmt === 0) return;
+  const cleanTarget = String(distNameOrId).trim().toLowerCase();
+
+  try {
+    let distributors = [];
+    try {
+      const { data } = await supabase.from('distributors').select('*');
+      if (data && data.length > 0) distributors = data;
+    } catch (_) {}
+
+    if (!distributors.length) {
+      try {
+        distributors = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+      } catch (_) {}
+    }
+
+    const distObj = distributors.find((d) => 
+      (d.id && String(d.id).toLowerCase() === cleanTarget) ||
+      (d.name && d.name.trim().toLowerCase() === cleanTarget)
+    );
+
+    if (distObj) {
+      const currentOutstanding = parseFloat(String(distObj.outstanding || '0').replace(/[^0-9.]/g, '')) || 0;
+      const newOutstanding = Math.max(0, currentOutstanding + deltaAmt);
+      const newPayStatus = newOutstanding === 0 ? 'paid' : 'unpaid';
+
+      const updatePayload = {
+        outstanding: `₹${newOutstanding.toLocaleString('en-IN')}`,
+        pay: newPayStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        await supabase.from('distributors').update(updatePayload).eq('id', distObj.id);
+      } catch (_) {}
+
+      try {
+        const local = JSON.parse(localStorage.getItem('mittigold_distributors_data') || '[]');
+        const updated = local.map((d) => d.id === distObj.id ? { ...d, ...updatePayload } : d);
+        localStorage.setItem('mittigold_distributors_data', JSON.stringify(updated));
+      } catch (_) {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mittigold-distributor-updated', { detail: { id: distObj.id, ...updatePayload } }));
+      }
+    }
+  } catch (err) {
+    console.warn('Error updating distributor outstanding balance:', err);
+  }
+}
+
+/**
  * Custom Service Functions for Orders
  * 100% Dynamic Supabase queries with robust local synchronization
  */
@@ -343,6 +398,8 @@ export const orderService = {
       is_adjusted: isAdjusted,
     };
 
+    const orderAmt = orderData.amt !== undefined && orderData.amt !== null ? Number(orderData.amt) : (parseFloat(String(orderTotal || '0').replace(/[^0-9.]/g, '')) || 0);
+
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -365,6 +422,9 @@ export const orderService = {
         // Auto-credit distributor reference (Employee achievement or Broker commission)
         await creditOrderReference(orderData, 0);
 
+        // Auto-update distributor outstanding balance
+        await updateDistributorOutstanding(orderData.dist_id || orderData.dist, orderAmt);
+
         this.notify();
         return savedItem;
       }
@@ -381,6 +441,9 @@ export const orderService = {
 
     // Auto-credit distributor reference locally
     await creditOrderReference(orderData, 0);
+
+    // Auto-update distributor outstanding balance locally
+    await updateDistributorOutstanding(orderData.dist_id || orderData.dist, orderAmt);
 
     this.notify();
 
@@ -474,6 +537,11 @@ export const orderService = {
       updated_at: new Date().toISOString()
     };
 
+    const prevAmt = existing?.amt !== undefined && existing?.amt !== null ? Number(existing.amt) : (parseFloat(String(existing?.total || existing?.order_value || '0').replace(/[^0-9.]/g, '')) || 0);
+    const newAmt = orderData.amt !== undefined && orderData.amt !== null ? Number(orderData.amt) : (parseFloat(String(orderTotal || '0').replace(/[^0-9.]/g, '')) || 0);
+    const prevDist = existing?.dist_id || existing?.dist;
+    const newDist = orderData.dist_id || orderData.dist;
+
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -494,8 +562,17 @@ export const orderService = {
         };
         saveLocalOrders([savedItem, ...local.filter(o => o.id !== data[0].id)]);
         
-        const prevAmt = existing?.amt || parseFloat(String(existing?.total || existing?.order_value || '0').replace(/[^0-9.]/g, '')) || 0;
         await creditOrderReference(orderData, prevAmt);
+
+        if (prevDist && newDist && String(prevDist).trim().toLowerCase() !== String(newDist).trim().toLowerCase()) {
+          await updateDistributorOutstanding(prevDist, -prevAmt);
+          await updateDistributorOutstanding(newDist, newAmt);
+        } else {
+          const delta = newAmt - prevAmt;
+          if (delta !== 0) {
+            await updateDistributorOutstanding(newDist || prevDist, delta);
+          }
+        }
 
         this.notify();
         return savedItem;
@@ -516,8 +593,17 @@ export const orderService = {
     };
     saveLocalOrders([savedFallback, ...local.filter(o => o.id !== orderId)]);
     
-    const prevAmt = existing?.amt || parseFloat(String(existing?.total || existing?.order_value || '0').replace(/[^0-9.]/g, '')) || 0;
     await creditOrderReference(orderData, prevAmt);
+
+    if (prevDist && newDist && String(prevDist).trim().toLowerCase() !== String(newDist).trim().toLowerCase()) {
+      await updateDistributorOutstanding(prevDist, -prevAmt);
+      await updateDistributorOutstanding(newDist, newAmt);
+    } else {
+      const delta = newAmt - prevAmt;
+      if (delta !== 0) {
+        await updateDistributorOutstanding(newDist || prevDist, delta);
+      }
+    }
 
     this.notify();
     return savedFallback;
@@ -527,6 +613,15 @@ export const orderService = {
    * Delete an order directly from Supabase & local cache
    */
   async delete(orderId) {
+    const local = getLocalOrders();
+    const existing = local.find((o) => o.id === orderId);
+    if (existing) {
+      const orderAmt = existing.amt !== undefined && existing.amt !== null ? Number(existing.amt) : (parseFloat(String(existing.total || existing.order_value || '0').replace(/[^0-9.]/g, '')) || 0);
+      if (orderAmt > 0) {
+        await updateDistributorOutstanding(existing.dist_id || existing.dist, -orderAmt);
+      }
+    }
+
     try {
       await supabase
         .from('orders')
@@ -536,7 +631,6 @@ export const orderService = {
       console.warn('Supabase delete order fallback to local:', err);
     }
 
-    const local = getLocalOrders();
     const filtered = local.filter((o) => o.id !== orderId);
     saveLocalOrders(filtered);
     this.notify();

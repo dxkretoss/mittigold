@@ -43,3 +43,22 @@ export function formatAchievementPercent(sales, target) {
   return `${raw.toFixed(3)}%`;
 }
 
+export function generateEmployeeCode(existingList = []) {
+  const nums = (existingList || [])
+    .map((e) => {
+      const code = e.employee_code || e.emp_code || e.id || '';
+      const match = String(code).match(/EMP-?(\d+)/i);
+      return match ? parseInt(match[1], 10) : null;
+    })
+    .filter((n) => n !== null && !isNaN(n));
+
+  const maxNum = nums.length > 0 ? Math.max(...nums) : 1000;
+  const nextNum = Math.max(maxNum + 1, 1001);
+  return `EMP-${nextNum}`;
+}
+
+export function generateEmployeePassword() {
+  const rand4 = Math.floor(1000 + Math.random() * 9000);
+  return `MG@${rand4}`;
+}
+

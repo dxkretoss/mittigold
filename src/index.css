@@ -486,9 +486,9 @@ nav.navlist::-webkit-scrollbar-thumb:hover {
   margin-top: 2px;
 }
 
-.panel-body {
+/* .panel-body {
   padding: 20px 22px;
-}
+} */
 
 .link-all {
   font-size: 12.5px;

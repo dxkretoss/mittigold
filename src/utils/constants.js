@@ -55,7 +55,7 @@ export const PAGE_TITLES = {
   "/dashboard": { title: "Dashboard", sub: "Sales overview and today's operations" },
   "/zones": { title: "Zones", sub: "4 predefined zones — South, North, Central Gujarat & Saurashtra" },
   "/leads": { title: "Leads", sub: "New → Follow-up → Convert → Close" },
-  "/distributors": { title: "Distributors", sub: "Target, outstanding & zone assignment" },
+  "/distributors": { title: "Distributors", sub: "Directory, outstanding & zone assignment" },
   "/brokers": { title: "Brokers", sub: "Commission & performance" },
   "/sales-team": { title: "Employee / Sales", sub: "Field sales team, zone assignments & monthly targets" },
   "/orders": { title: "Orders", sub: "Admin / Plant Manager queue" },

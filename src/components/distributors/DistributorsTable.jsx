@@ -1,7 +1,6 @@
 import React from 'react';
 import { Edit2, Trash2, Eye } from 'lucide-react';
 import { initials } from '../../utils/helpers';
-import { GrainGauge } from '../common/GrainGauge';
 import { EmptyState } from '../common/EmptyState';
 import { Pagination } from '../common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -31,7 +30,6 @@ export const DistributorsTable = ({
             <tr>
               <th>Distributor</th>
               <th>Zone / City / Area</th>
-              <th>Target Achievement</th>
               <th>Outstanding</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -85,13 +83,6 @@ export const DistributorsTable = ({
                     <td className="zoneword">
                       {d.zone} <span style={{ color: 'var(--ink-faint)' }}>›</span> {d.city}{' '}
                       <span style={{ color: 'var(--ink-faint)' }}>›</span> {d.area}
-                    </td>
-                    <td style={{ minWidth: '160px' }}>
-                      <GrainGauge
-                        percent={d.target || 0}
-                        color={(d.target || 0) >= 100 ? 'green' : ''}
-                        showPercent={true}
-                      />
                     </td>
                     <td
                       className="amt"
@@ -152,7 +143,7 @@ export const DistributorsTable = ({
                 );
               })
             ) : (
-              <EmptyState message="No distributors found matching filters" colSpan={5} />
+              <EmptyState message="No distributors found matching filters" colSpan={4} />
             )}
           </tbody>
         </table>

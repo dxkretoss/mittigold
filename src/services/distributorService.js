@@ -330,10 +330,24 @@ export const distributorService = {
     const allPayments = getLocalPayments();
     saveLocalPayments([newPayment, ...allPayments]);
     
-    await this.updatePayment(dist.id, 'paid', newPayment);
+    // Deduct paid amount from distributor's outstanding balance
+    const currentOutstanding = parseFloat(String(dist.outstanding || '0').replace(/[^0-9.]/g, '')) || 0;
+    const newOutstanding = Math.max(0, currentOutstanding - numAmount);
+    const newPay = newOutstanding === 0 ? 'paid' : 'unpaid';
+
+    await this.update(dist.id, {
+      outstanding: `₹${newOutstanding.toLocaleString('en-IN')}`,
+      pay: newPay,
+      payment_proof: newPayment.payment_proof || dist.payment_proof,
+      payment_date: newPayment.payment_date,
+      payment_mode: newPayment.payment_mode,
+      payment_ref: newPayment.payment_ref,
+      payment_notes: newPayment.payment_notes,
+    });
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mittigold-payment-created', { detail: newPayment }));
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-updated', { detail: { id: dist.id } }));
     }
     return newPayment;
   },
@@ -343,8 +357,28 @@ export const distributorService = {
    */
   async deletePayment(paymentId, distributorId) {
     const allPayments = getLocalPayments();
+    const payment = allPayments.find((p) => p.id === paymentId);
     const filtered = allPayments.filter((p) => p.id !== paymentId);
     saveLocalPayments(filtered);
+
+    if (payment && distributorId) {
+      const allDists = await this.getAll();
+      const dist = allDists.find((d) => d.id === distributorId || String(d.id) === String(distributorId));
+      if (dist) {
+        const deletedAmt = payment.amountNum || parseFloat(String(payment.amount || '0').replace(/[^0-9.]/g, '')) || 0;
+        const currentOutstanding = parseFloat(String(dist.outstanding || '0').replace(/[^0-9.]/g, '')) || 0;
+        const newOutstanding = currentOutstanding + deletedAmt;
+        await this.update(dist.id, {
+          outstanding: `₹${newOutstanding.toLocaleString('en-IN')}`,
+          pay: newOutstanding === 0 ? 'paid' : 'unpaid',
+        });
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mittigold-payment-deleted'));
+      window.dispatchEvent(new CustomEvent('mittigold-distributor-updated'));
+    }
     return true;
   },
 

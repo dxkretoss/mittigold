@@ -216,7 +216,7 @@ export const Invoices = () => {
           </div>
         </div>
 
-        <div className="panel-body" style={{ paddingTop: '4px', maxHeight: '560px', overflowY: 'auto' }}>
+        <div className="panel-body" style={{ padding: '0 12px', paddingTop: '4px', maxHeight: '560px', overflowY: 'auto' }}>
           {loading ? (
             <div style={{ padding: '8px 4px' }}>
               <Skeleton variant="rect" height="74px" style={{ marginBottom: '8px' }} />

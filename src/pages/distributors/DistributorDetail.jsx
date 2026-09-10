@@ -12,7 +12,6 @@ import {
   Image as ImageIcon,
   ExternalLink,
   X,
-  TrendingUp,
   Clock,
   CheckCircle,
   FileText,
@@ -21,7 +20,6 @@ import {
   Eye,
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
-import { GrainGauge } from '../../components/common/GrainGauge';
 import { Skeleton } from '../../components/common/Skeleton';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { initials } from '../../utils/helpers';
@@ -409,20 +407,6 @@ export const DistributorDetail = () => {
               {rawOutstanding > 0 ? 'Payment pending' : 'All accounts settled'}
             </div>
           </div>
-        </div>
-
-        {/* Target Progress Bar */}
-        <div style={{ background: '#FAF9F6', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '12px' }}>
-            <span style={{ color: 'var(--navy)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <TrendingUp className="w-4 h-4 text-wheat" />
-              Target Quota: {distributor.target || 80} Bags / Month
-            </span>
-            <span className="mono" style={{ fontWeight: 700, color: (distributor.target || 0) >= 100 ? 'var(--green)' : 'var(--navy)' }}>
-              {distributor.target || 0}% Achieved
-            </span>
-          </div>
-          <GrainGauge percent={distributor.target || 0} color={(distributor.target || 0) >= 100 ? 'green' : ''} />
         </div>
       </div>
 

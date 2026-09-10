@@ -22,7 +22,7 @@ export const AddDistributorModal = ({
   onUpdate,
 }) => {
   const isEditing = !!distributor?.id;
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [brokers, setBrokers] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -123,7 +123,40 @@ export const AddDistributorModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.zone || !formData.city || !formData.area) return;
+
+    if (!formData.name?.trim()) {
+      showError('Validation Error', 'Distributor / Business Name is required.');
+      return;
+    }
+    if (!formData.zone?.trim()) {
+      showError('Validation Error', 'Assigned Zone is required.');
+      return;
+    }
+    if (!formData.city?.trim()) {
+      showError('Validation Error', 'City / District is required.');
+      return;
+    }
+    if (!formData.area?.trim()) {
+      showError('Validation Error', 'Area / Market is required.');
+      return;
+    }
+    if (formData.reference_type === 'broker' && !formData.reference_id) {
+      showError('Validation Error', 'Please select a referring Broker.');
+      return;
+    }
+    if (formData.reference_type === 'employee' && !formData.reference_id) {
+      showError('Validation Error', 'Please select an assigned Employee.');
+      return;
+    }
+    const cleanPhone = (formData.phone || '').trim().replace(/[^0-9]/g, '');
+    if (!cleanPhone || cleanPhone === '91') {
+      showError('Validation Error', 'Contact Number is required.');
+      return;
+    }
+    if (!formData.sameBilling && !formData.billing?.trim()) {
+      showError('Validation Error', 'Legal Billing Address is required when not same as area/city.');
+      return;
+    }
 
     setLoading(true);
     const billingText = formData.sameBilling
@@ -158,6 +191,8 @@ export const AddDistributorModal = ({
         showSuccess('Distributor Added', `${distPayload.name} is now active in ${distPayload.city} · ${distPayload.area}.`);
       }
       onClose();
+    } catch (err) {
+      showError(isEditing ? 'Update Failed' : 'Creation Failed', err?.message || 'Failed to save distributor');
     } finally {
       setLoading(false);
     }
@@ -413,16 +448,15 @@ export const AddDistributorModal = ({
           )}
         </div>
 
-        {/* Target & Contact */}
+        {/* Contact & GSTIN */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '14px' }}>
           <div className="f-group">
-            <label>1st Year Sales Target (%)</label>
-            <input
-              type="number"
-              min="0"
-              max="200"
-              value={formData.target}
-              onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+            <label>Contact Number *</label>
+            <PhoneInput
+              value={formData.phone}
+              onChange={(val) => setFormData({ ...formData, phone: val })}
+              placeholder="98250 12345"
+              required
             />
           </div>
 
@@ -436,16 +470,6 @@ export const AddDistributorModal = ({
               style={{ textTransform: 'uppercase', fontFamily: 'IBM Plex Mono, monospace' }}
             />
           </div>
-        </div>
-
-        <div className="f-group" style={{ marginTop: '12px' }}>
-          <label>Contact Number *</label>
-          <PhoneInput
-            value={formData.phone}
-            onChange={(val) => setFormData({ ...formData, phone: val })}
-            placeholder="98250 12345"
-            required
-          />
         </div>
 
         {/* Billing Address Option */}
@@ -470,21 +494,26 @@ export const AddDistributorModal = ({
           </label>
 
           {!formData.sameBilling && (
-            <textarea
-              style={{
-                marginTop: '8px',
-                width: '100%',
-                borderRadius: '6px',
-                border: '1px solid var(--line)',
-                padding: '8px 10px',
-                fontSize: '12.5px',
-                fontFamily: 'inherit',
-              }}
-              rows={2}
-              placeholder="Enter full legal billing address..."
-              value={formData.billing}
-              onChange={(e) => setFormData({ ...formData, billing: e.target.value })}
-            />
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginBottom: '4px', display: 'block' }}>
+                Full Legal Billing Address *
+              </label>
+              <textarea
+                required
+                style={{
+                  width: '100%',
+                  borderRadius: '6px',
+                  border: '1px solid var(--line)',
+                  padding: '8px 10px',
+                  fontSize: '12.5px',
+                  fontFamily: 'inherit',
+                }}
+                rows={2}
+                placeholder="Enter full legal billing address..."
+                value={formData.billing}
+                onChange={(e) => setFormData({ ...formData, billing: e.target.value })}
+              />
+            </div>
           )}
         </div>
       </form>

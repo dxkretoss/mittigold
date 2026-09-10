@@ -10,6 +10,8 @@ export const PhoneInput = ({
   country = 'in',
   enableSearch = true,
   className = '',
+  required = false,
+  inputProps = {},
 }) => {
   return (
     <div className={`phone-input-wrapper ${className}`}>
@@ -31,6 +33,10 @@ export const PhoneInput = ({
         inputClass="mg-phone-input"
         buttonClass="mg-phone-button"
         dropdownClass="mg-phone-dropdown"
+        inputProps={{
+          required,
+          ...inputProps,
+        }}
       />
     </div>
   );
