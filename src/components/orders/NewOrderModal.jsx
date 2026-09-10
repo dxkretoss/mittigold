@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { distributorService } from '../../services/distributorService';
@@ -152,6 +152,18 @@ export const NewOrderModal = ({
     }
   }, [isOpen, order]);
 
+  // Only distributors with ₹0 outstanding balance can place new orders
+  const eligibleDistributors = useMemo(() => {
+    return distributors.filter((d) => {
+      // When editing an order, preserve the already selected distributor
+      if (isEditing && order?.dist && (d.name === order.dist || d.id === order.dist_id)) {
+        return true;
+      }
+      const rawOutstanding = parseFloat(String(d.outstanding || '').replace(/[^0-9.]/g, '')) || 0;
+      return rawOutstanding === 0;
+    });
+  }, [distributors, isEditing, order]);
+
   const addLine = () => {
     const nextIdx = Math.min(lines.length, Math.max(0, products.length - 1));
     const defaultP = products[nextIdx] || products[0];
@@ -198,6 +210,16 @@ export const NewOrderModal = ({
       return;
     }
 
+    const selectedDistObj = distributors.find((d) => d.name === dist || d.id === dist);
+    const rawOutstanding = parseFloat(String(selectedDistObj?.outstanding || '').replace(/[^0-9.]/g, '')) || 0;
+    if (!isEditing && rawOutstanding > 0) {
+      showError(
+        'Outstanding Balance Pending',
+        `Cannot create order: ${selectedDistObj?.name} has an outstanding balance of ${selectedDistObj?.outstanding || 'dues'}. Previous order amount must be paid first.`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -228,7 +250,6 @@ export const NewOrderModal = ({
         return;
       }
 
-      const selectedDistObj = distributors.find((d) => d.name === dist || d.id === dist);
       const targetZone = selectedDistObj?.zone || order?.zone || 'South Gujarat';
       const orderDate = order?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const orderTotal = `₹${totalValNum.toLocaleString('en-IN')}`;
@@ -297,7 +318,7 @@ export const NewOrderModal = ({
           <button
             className="btn-primary"
             type="button"
-            disabled={isSubmitting}
+            disabled={isSubmitting || eligibleDistributors.length === 0}
             onClick={() => {
               const form = document.getElementById('newOrderForm');
               if (form) form.requestSubmit();
@@ -334,20 +355,32 @@ export const NewOrderModal = ({
         )}
 
         <div className="f-group">
-          <label>Distributor *</label>
+          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Distributor *</span>
+            <span style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>
+              Only clear accounts (₹0 Outstanding)
+            </span>
+          </label>
           <select
             required
             value={dist}
             onChange={(e) => setDist(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || eligibleDistributors.length === 0}
           >
-            <option value="">Select distributor</option>
-            {distributors.map((d) => (
+            <option value="">
+              {eligibleDistributors.length === 0 ? 'No distributors eligible (pending outstanding dues)' : 'Select distributor'}
+            </option>
+            {eligibleDistributors.map((d) => (
               <option key={d.id || d.name} value={d.name}>
-                {d.name}
+                {d.name} {d.city ? `(${d.city})` : ''}
               </option>
             ))}
           </select>
+          {eligibleDistributors.length === 0 && (
+            <div style={{ fontSize: '11.5px', color: 'var(--red)', marginTop: '4px' }}>
+              ⚠️ Distributors with pending outstanding balances cannot place new orders until dues are settled.
+            </div>
+          )}
         </div>
 
         <div className="f-group">

@@ -9,6 +9,7 @@ export const Modal = ({
   children,
   footer,
   maxWidth = '520px',
+  closeOnOutsideClick = false,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [showClass, setShowClass] = useState(false);
@@ -49,7 +50,7 @@ export const Modal = ({
     <div
       className={`modal-overlay ${showClass ? 'show' : ''}`}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (closeOnOutsideClick && e.target === e.currentTarget) onClose();
       }}
       style={{
         position: 'fixed',
